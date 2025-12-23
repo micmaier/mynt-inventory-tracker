@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model InventoryStart {
+  id           String   @id @default(cuid())
+  baseType     String
+  category     String
+  size         String
+  startQty     Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([baseType, category, size], name: "baseType_category_size")
+  @@index([baseType, category])
+}
+
+model InventoryMovement {
+  id             String   @id @default(cuid())
+  orderId         String
+  orderCreatedAt  DateTime
+  baseType        String
+  category        String
+  size            String
+  qtyUsed         Int
+  createdAt       DateTime @default(now())
+
+  @@unique([orderId, baseType, category, size], name: "orderId_baseType_category_size")
+  @@index([orderCreatedAt])
+  @@index([baseType, category, size])
+}
+
+model ProductBaseTagCache {
+  productId    String   @id
+  baseType     String?
+  tagsRaw      String?
+  updatedAt    DateTime @updatedAt
+}
+
+model ProcessedOrder {
+  orderId      String   @id
+  processedAt  DateTime @default(now())
+}
+
