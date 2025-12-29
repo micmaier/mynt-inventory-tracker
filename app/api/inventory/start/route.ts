@@ -5,7 +5,13 @@ import { ALLOWED_SIZES } from "@/src/lib/inventory";
 
 const Body = z.object({
   secret: z.string(),
-  baseType: z.enum(["P", "U"]),
+  // ✅ vorher: z.enum(["P","U"])
+  // ✅ jetzt: auch "Pure White", "Wall Primer", ...
+  baseType: z
+    .string()
+    .trim()
+    .min(1, "baseType required")
+    .max(60, "baseType too long"),
   category: z.enum(["Wandfarbe", "Lack"]),
   size: z.enum(ALLOWED_SIZES),
   startQty: z.number().int().min(0),
