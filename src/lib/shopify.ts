@@ -6,6 +6,7 @@ const API_VER = process.env.SHOPIFY_API_VERSION || "2024-10";
 
 type ShopifyOrder = {
   id: number;
+  name?: string; // "#7861" (kommt automatisch mit)
   created_at: string;
   email?: string | null;
   line_items: Array<{
@@ -23,28 +24,93 @@ type ShopifyProduct = {
   product: { id: number; tags: string };
 };
 
-export async function fetchPaidOrders(): Promise<ShopifyOrder[]> {
+// ---------------------------------------------
+// helpers
+// ---------------------------------------------
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function parseNextPageUrl(linkHeader: string | null): string | null {
+  if (!linkHeader) return null;
+  // <url>; rel="next"
+  const parts = linkHeader.split(",").map((p) => p.trim());
+  for (const p of parts) {
+    if (p.includes('rel="next"')) {
+      const m = p.match(/<([^>]+)>/);
+      return m?.[1] ?? null;
+    }
+  }
+  return null;
+}
+
+async function shopifyFetch(url: string, attempt = 0): Promise<Response> {
+  const res = await fetch(url, {
+    headers: { "X-Shopify-Access-Token": TOKEN },
+    cache: "no-store",
+  });
+
+  if (res.status === 429) {
+    // Shopify rate limit
+    const retryAfter = Number(res.headers.get("Retry-After") || "1");
+    const backoff = Math.min(10_000, retryAfter * 1000) + attempt * 300;
+    await sleep(backoff);
+    return shopifyFetch(url, attempt + 1);
+  }
+
+  return res;
+}
+
+// ---------------------------------------------
+// Orders (PAID) – pagination safe + retry
+// ---------------------------------------------
+export async function fetchPaidOrders(params?: { createdAtMin?: string }): Promise<ShopifyOrder[]> {
   const baseUrl = `https://${SHOP}/admin/api/${API_VER}/orders.json`;
-  const params = new URLSearchParams({
+
+  const all: ShopifyOrder[] = [];
+  let nextUrl: string | null = null;
+
+  // erster Request
+  const firstParams = new URLSearchParams({
     status: "any",
     financial_status: "paid",
     limit: "250",
   });
 
-  const res = await fetch(`${baseUrl}?${params.toString()}`, {
-    headers: { "X-Shopify-Access-Token": TOKEN },
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Shopify orders fetch failed: ${res.status} ${text}`);
+  if (params?.createdAtMin) {
+    // Shopify erwartet ISO, z.B. 2025-12-01T00:00:00+00:00
+    firstParams.set("created_at_min", params.createdAtMin);
   }
 
-  const data = await res.json();
-  return (data.orders || []) as ShopifyOrder[];
+  nextUrl = `${baseUrl}?${firstParams.toString()}`;
+
+  while (nextUrl) {
+    const res = await fetch(nextUrl, {
+      headers: { "X-Shopify-Access-Token": TOKEN },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Shopify orders fetch failed: ${res.status} ${text}`);
+    }
+
+    const data = await res.json();
+    all.push(...((data.orders || []) as ShopifyOrder[]));
+
+    // Pagination: Link header auswerten
+    const link = res.headers.get("link") || res.headers.get("Link") || "";
+    const m = link.match(/<([^>]+)>;\s*rel="next"/);
+    nextUrl = m ? m[1] : null;
+  }
+
+  return all;
 }
 
+
+// ---------------------------------------------
+// Product tags (UNVERÄNDERT)
+// ---------------------------------------------
 export async function fetchProductTags(productId: string): Promise<string> {
   const url = `https://${SHOP}/admin/api/${API_VER}/products/${productId}.json?fields=id,tags`;
   const res = await fetch(url, {

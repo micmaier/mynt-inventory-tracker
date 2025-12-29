@@ -14,6 +14,25 @@ type LineItem = {
   properties?: Array<{ name: string; value: string }>;
 };
 
+// --- Special products (no Base P/U logic, no Shopify calls) ---
+const SPECIAL_PRODUCTS = {
+  Wandfarbe: [
+    { name: "Pure White", sizes: ["1 Liter", "2.5 Liter", "10 Liter"] as const },
+    { name: "Ultra White", sizes: ["1 Liter", "2.5 Liter", "10 Liter"] as const },
+    { name: "Wall Primer", sizes: ["2.5 Liter", "10 Liter"] as const },
+  ],
+  Lack: [
+    { name: "Pure White", sizes: ["0.75 Liter"] as const },
+    { name: "Lack Primer", sizes: ["0.75 Liter"] as const },
+    { name: "Klarlack", sizes: ["0.75 Liter"] as const },
+    { name: "Wandschutz", sizes: ["0.75 Liter", "2.5 Liter"] as const },
+  ],
+} as const;
+
+function normalize(s: string) {
+  return (s || "").toLowerCase().trim();
+}
+
 export function detectCategory(text: string): Category | null {
   const t = text.toLowerCase();
   if (t.includes("wandfarbe")) return "Wandfarbe";
@@ -25,6 +44,40 @@ export function detectSize(text: string): Size | null {
   for (const s of ALLOWED_SIZES) {
     if (text.includes(s)) return s;
   }
+  return null;
+}
+
+function detectSpecialProduct(
+  li: LineItem,
+  size: Size | null
+): { baseType: string; category: Category; size: Size } | null {
+  if (!size) return null;
+
+  const title = li.name ?? "";
+  const variant = li.variant_title ?? "";
+  const hay = normalize(`${title} ${variant}`);
+
+  // category hint can come from variant_title like "Wandfarbe / 10 Liter"
+  const hintedCategory = detectCategory(`${title} ${variant}`);
+
+  // Try Wandfarbe list
+  for (const p of SPECIAL_PRODUCTS.Wandfarbe) {
+    if (hay.includes(normalize(p.name))) {
+      if ((p.sizes as readonly string[]).includes(size)) {
+        return { baseType: p.name, category: hintedCategory ?? "Wandfarbe", size };
+      }
+    }
+  }
+
+  // Try Lack list
+  for (const p of SPECIAL_PRODUCTS.Lack) {
+    if (hay.includes(normalize(p.name))) {
+      if ((p.sizes as readonly string[]).includes(size)) {
+        return { baseType: p.name, category: hintedCategory ?? "Lack", size };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -79,20 +132,31 @@ export function baseTypeFromCustomColor(li: LineItem): BaseType | null {
 
 export async function classifyLineItem(
   li: LineItem
-): Promise<{ baseType: BaseType; category: Category; size: Size } | null> {
+): Promise<{ baseType: string; category: Category; size: Size } | null> {
   const text = `${li.name ?? ""} ${li.variant_title ?? ""}`;
 
-  const category = detectCategory(text);
-  if (!category) return null;
-
+  // Size first (works for all)
   const size = detectSize(text);
   if (!size) return null;
 
+  // Custom Color (unchanged)
   if (isCustomColor(li)) {
+    const category = detectCategory(text);
+    if (!category) return null;
+
     const baseType = baseTypeFromCustomColor(li);
     if (!baseType) return null;
+
     return { baseType, category, size };
   }
+
+  // Special products (NEW, but does not touch Base P/U behavior)
+  const special = detectSpecialProduct(li, size);
+  if (special) return special;
+
+  // Default flow (unchanged): category + product tags Base P/U
+  const category = detectCategory(text);
+  if (!category) return null;
 
   if (!li.product_id) return null;
   const baseType = await getBaseTypeFromProductTags(String(li.product_id));

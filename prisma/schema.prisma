@@ -49,7 +49,14 @@ model ProductBaseTagCache {
 }
 
 model ProcessedOrder {
-  orderId      String   @id
-  processedAt  DateTime @default(now())
+  orderId        String   @id
+  orderName      String?
+  orderCreatedAt DateTime?
+  processedAt    DateTime @default(now())
+
+  @@index([orderCreatedAt])
 }
+
+
+
 

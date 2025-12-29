@@ -3,6 +3,15 @@ import { prisma } from "@/src/lib/db";
 import { fetchPaidOrders } from "@/src/lib/shopify";
 import { classifyLineItem } from "@/src/lib/inventory";
 
+function parseFromParam(req: Request): Date | null {
+  const { searchParams } = new URL(req.url);
+  const from = searchParams.get("from");
+  if (!from) return null;
+
+  const d = new Date(`${from}T00:00:00.000Z`);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const secret = searchParams.get("secret");
@@ -18,8 +27,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Missing Shopify env vars" }, { status: 500 });
   }
 
+  const fromDate = parseFromParam(req);
+  const createdAtMin = fromDate ? `${fromDate.toISOString().slice(0, 10)}T00:00:00+00:00` : undefined;
+
   try {
-    const orders = await fetchPaidOrders();
+    // ✅ Punkt 3: alles außerhalb Zeitraum entfernen
+    // Wenn ein Zeitraum gewählt ist: diesen Zeitraum immer frisch aufbauen
+  if (fromDate) {
+    await prisma.inventoryMovement.deleteMany({
+      where: { orderCreatedAt: { gte: fromDate } },
+    });
+    await prisma.processedOrder.deleteMany({
+      where: { orderCreatedAt: { gte: fromDate } },
+    });
+  }
+
+
+    const orders = await fetchPaidOrders(createdAtMin ? { createdAtMin } : undefined);
 
     let processed = 0;
     let skipped = 0;
@@ -53,9 +77,16 @@ export async function GET(req: Request) {
       }
 
       const createdAt = new Date(o.created_at);
+      const orderName = (o as any).name ?? null;
 
       await prisma.$transaction(async (tx) => {
-        await tx.processedOrder.create({ data: { orderId } });
+        await tx.processedOrder.create({
+          data: {
+            orderId,
+            orderName,
+            orderCreatedAt: createdAt,
+          },
+        });
 
         for (const m of bucket.values()) {
           if (m.qty <= 0) continue;
@@ -83,6 +114,7 @@ export async function GET(req: Request) {
       movementsCreated,
       ignoredLineItems,
       ordersFetched: orders.length,
+      from: fromDate ? fromDate.toISOString().slice(0, 10) : null,
     });
   } catch (e: any) {
     console.error(e);
