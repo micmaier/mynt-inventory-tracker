@@ -45,7 +45,7 @@ function parseNextPageUrl(linkHeader: string | null): string | null {
 }
 
 async function shopifyFetch(url: string, attempt = 0): Promise<Response> {
-  const res = await fetch(url, {
+  const res: Response = await fetch(nextUrl, {
     headers: { "X-Shopify-Access-Token": TOKEN },
     cache: "no-store",
   });
@@ -85,7 +85,7 @@ export async function fetchPaidOrders(params?: { createdAtMin?: string }): Promi
   nextUrl = `${baseUrl}?${firstParams.toString()}`;
 
   while (nextUrl) {
-    const res = await fetch(nextUrl, {
+    const res: Response = await fetch(nextUrl, {
       headers: { "X-Shopify-Access-Token": TOKEN },
       cache: "no-store",
     });
@@ -113,10 +113,11 @@ export async function fetchPaidOrders(params?: { createdAtMin?: string }): Promi
 // ---------------------------------------------
 export async function fetchProductTags(productId: string): Promise<string> {
   const url = `https://${SHOP}/admin/api/${API_VER}/products/${productId}.json?fields=id,tags`;
-  const res = await fetch(url, {
+  const res: Response = await fetch(nextUrl, {
     headers: { "X-Shopify-Access-Token": TOKEN },
     cache: "no-store",
   });
+
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
