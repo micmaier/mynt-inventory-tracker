@@ -6,7 +6,7 @@ const API_VER = process.env.SHOPIFY_API_VERSION || "2024-10";
 
 type ShopifyOrder = {
   id: number;
-  name?: string; // "#7861" (kommt automatisch mit)
+  name?: string; // "#7861"
   created_at: string;
   email?: string | null;
   line_items: Array<{
@@ -33,7 +33,8 @@ function sleep(ms: number) {
 
 function parseNextPageUrl(linkHeader: string | null): string | null {
   if (!linkHeader) return null;
-  // <url>; rel="next"
+
+  // Shopify format: <url>; rel="next", <url>; rel="previous"
   const parts = linkHeader.split(",").map((p) => p.trim());
   for (const p of parts) {
     if (p.includes('rel="next"')) {
@@ -44,8 +45,8 @@ function parseNextPageUrl(linkHeader: string | null): string | null {
   return null;
 }
 
-async function shopifyFetch(url: string, attempt = 0): Promise<Response> {
-  const res: Response = await fetch(nextUrl, {
+async function shopifyFetch(url: string, attempt = 0): Promise<globalThis.Response> {
+  const res: globalThis.Response = await globalThis.fetch(url, {
     headers: { "X-Shopify-Access-Token": TOKEN },
     cache: "no-store",
   });
@@ -85,10 +86,7 @@ export async function fetchPaidOrders(params?: { createdAtMin?: string }): Promi
   nextUrl = `${baseUrl}?${firstParams.toString()}`;
 
   while (nextUrl) {
-    const res: Response = await fetch(nextUrl, {
-      headers: { "X-Shopify-Access-Token": TOKEN },
-      cache: "no-store",
-    });
+    const res = await shopifyFetch(nextUrl);
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -99,25 +97,20 @@ export async function fetchPaidOrders(params?: { createdAtMin?: string }): Promi
     all.push(...((data.orders || []) as ShopifyOrder[]));
 
     // Pagination: Link header auswerten
-    const link = res.headers.get("link") || res.headers.get("Link") || "";
-    const m = link.match(/<([^>]+)>;\s*rel="next"/);
-    nextUrl = m ? m[1] : null;
+    const link = res.headers.get("link") || res.headers.get("Link");
+    nextUrl = parseNextPageUrl(link);
   }
 
   return all;
 }
 
-
 // ---------------------------------------------
-// Product tags (UNVERÄNDERT)
+// Product tags (UNVERÄNDERT von Logik her)
 // ---------------------------------------------
 export async function fetchProductTags(productId: string): Promise<string> {
   const url = `https://${SHOP}/admin/api/${API_VER}/products/${productId}.json?fields=id,tags`;
-  const res: Response = await fetch(nextUrl, {
-    headers: { "X-Shopify-Access-Token": TOKEN },
-    cache: "no-store",
-  });
 
+  const res = await shopifyFetch(url);
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
