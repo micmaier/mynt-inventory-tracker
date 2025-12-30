@@ -1,0 +1,17 @@
+name: Daily Inventory Scan
+
+on:
+  schedule:
+    # täglich um 06:15 UTC (07:15 in Wien im Winter, 08:15 im Sommer)
+    - cron: "15 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron endpoint
+        run: |
+          curl -sS -X GET "${{ secrets.INVENTORY_CRON_URL }}?secret=${{ secrets.CRON_SECRET }}" \
+            -H "Accept: application/json" \
+            --fail
