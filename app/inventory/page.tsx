@@ -9,21 +9,15 @@ function k(baseType: string, category: string, size: string) {
 }
 
 // ✅ Next 16 / Turbopack: searchParams kann Promise sein → wir geben hier nur Parsing für ein "plain object"
-function parseFrom(searchParams: Record<string, string | string[] | undefined>): Date {
+function parseFrom(searchParams: Record<string, string | string[] | undefined>): string | null {
   const raw = searchParams.from;
   const v = Array.isArray(raw) ? raw[0] : raw;
+  if (!v) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
 
-  // default: heute (UTC 00:00)
-  const today = new Date();
-  const y = today.getUTCFullYear();
-  const m = String(today.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(today.getUTCDate()).padStart(2, "0");
-  const fallback = new Date(`${y}-${m}-${d}T00:00:00.000Z`);
-
-  if (!v) return fallback;
-
-  const parsed = new Date(`${v}T00:00:00.000Z`);
-  return Number.isFinite(parsed.getTime()) ? parsed : fallback;
+function toDateUTC(yyyyMmDd: string): Date {
+  return new Date(`${yyyyMmDd}T00:00:00.000Z`);
 }
 
 function toMs(v: any): number {
@@ -41,8 +35,21 @@ export default async function InventoryPage({
 }) {
   const sp = await searchParams;
 
-  const fromDate = parseFrom(sp);
-  const fromISO = fromDate.toISOString().slice(0, 10);
+  // ✅ NEU: wenn kein ?from= gesetzt ist → serverseitig gespeichertes DefaultFrom nutzen
+  const qpFrom = parseFrom(sp);
+
+  const settings = await prisma.inventorySettings.findUnique({ where: { id: "default" } });
+  const settingsFromISO = settings?.defaultFrom ? settings.defaultFrom.toISOString().slice(0, 10) : null;
+
+  // default: settingsFrom (wenn vorhanden), sonst heute (UTC 00:00)
+  const today = new Date();
+  const y = today.getUTCFullYear();
+  const m = String(today.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(today.getUTCDate()).padStart(2, "0");
+  const todayISO = `${y}-${m}-${d}`;
+
+  const fromISO = qpFrom ?? settingsFromISO ?? todayISO;
+  const fromDate = toDateUTC(fromISO);
   const fromMs = fromDate.getTime();
 
   const starts = await prisma.inventoryStart.findMany();
@@ -59,7 +66,12 @@ export default async function InventoryPage({
   });
 
   const startMap = new Map<string, number>();
-  for (const s of starts) startMap.set(k(s.baseType, s.category, s.size), s.startQty);
+  const minMap = new Map<string, number>();
+  for (const s of starts) {
+    const key = k(s.baseType, s.category, s.size);
+    startMap.set(key, s.startQty);
+    minMap.set(key, s.minQty ?? 0);
+  }
 
   const usedMap = new Map<string, number>();
   for (const m of moves) {
@@ -93,6 +105,7 @@ export default async function InventoryPage({
     category: string;
     size: string;
     startQty: number;
+    minQty: number;
     usedQty: number;
     remainingQty: number;
   }> = [];
@@ -101,6 +114,7 @@ export default async function InventoryPage({
     for (const size of t.sizes) {
       const key = k(t.baseType, t.category, size);
       const startQty = startMap.get(key) ?? 0;
+      const minQty = minMap.get(key) ?? 0;
       const usedQty = usedMap.get(key) ?? 0;
 
       rows.push({
@@ -108,12 +122,12 @@ export default async function InventoryPage({
         category: t.category,
         size,
         startQty,
+        minQty,
         usedQty,
         remainingQty: startQty - usedQty,
       });
     }
   }
-
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>

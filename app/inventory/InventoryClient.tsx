@@ -9,6 +9,7 @@ type Row = {
   category: string;
   size: string;
   startQty: number;
+  minQty: number; // ✅ NEU
   usedQty: number;
   remainingQty: number;
 };
@@ -35,6 +36,12 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
     return init;
   });
 
+  const [draftMins, setDraftMins] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    for (const r of rows) init[key(r)] = r.minQty ?? 0;
+    return init;
+  });
+
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
 
@@ -55,7 +62,22 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
     return `${r.baseType}|${r.category}|${r.size}`;
   }
 
-  function applyFrom() {
+  // ✅ NEU: Datum serverseitig als Default speichern (für Auto-Scan / Default-View)
+  async function applyFrom() {
+    // best effort: Speichern darf Navigation nicht blockieren
+    if (secret) {
+      try {
+        await fetch("/api/inventory/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            secret,
+            defaultFrom: from || null,
+          }),
+        });
+      } catch {}
+    }
+
     // ✅ hält /inventory und Server-Filter synchron
     const qp = from ? `?from=${encodeURIComponent(from)}` : "";
     router.push(`/inventory${qp}`);
@@ -91,6 +113,43 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
       if (!res.ok) throw new Error(data?.error || "Startwert speichern fehlgeschlagen.");
 
       setMsg("Startwert gespeichert.");
+      router.refresh();
+    } catch (e: any) {
+      setMsg(e?.message || "Fehler beim Speichern.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveMin(k: string) {
+    const r = byKey.get(k);
+    if (!r) return;
+
+    if (!secret) {
+      setMsg("Bitte SCAN_SECRET eingeben (oben).");
+      return;
+    }
+
+    setBusy(true);
+    setMsg("");
+
+    try {
+      const res = await fetch("/api/inventory/min", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret,
+          baseType: r.baseType,
+          category: r.category,
+          size: r.size,
+          minQty: Number(draftMins[k] ?? 0),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Mindestbestand speichern fehlgeschlagen.");
+
+      setMsg("Mindestbestand gespeichert.");
       router.refresh();
     } catch (e: any) {
       setMsg(e?.message || "Fehler beim Speichern.");
@@ -254,15 +313,14 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
         </div>
 
         <div style={{ marginTop: 10, fontSize: 13, color: msg.includes("Fehler") ? "crimson" : "#666" }}>
-          {msg ||
-            "Remaining = Start − Used. Scan liest bezahlte Shopify Orders (ab Datum) und schreibt Movements."}
+          {msg || "Remaining = Start − Used. Scan liest bezahlte Shopify Orders (ab Datum) und schreibt Movements."}
         </div>
       </div>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {["Base", "Kategorie", "Größe", "Start", "Used", "Remaining", "Set Start"].map((h) => (
+            {["Base", "Kategorie", "Größe", "Start", "Min", "Used", "Remaining", "Set Start", "Set Min"].map((h) => (
               <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 10 }}>
                 {h}
               </th>
@@ -274,6 +332,7 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
           {rows.map((r, i) => {
             const k = key(r);
             const draft = draftStarts[k] ?? 0;
+            const draftMin = draftMins[k] ?? 0;
 
             return (
               <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
@@ -281,12 +340,13 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
                 <td style={{ padding: 10 }}>{r.category}</td>
                 <td style={{ padding: 10 }}>{r.size}</td>
                 <td style={{ padding: 10 }}>{r.startQty}</td>
+                <td style={{ padding: 10 }}>{r.minQty}</td>
                 <td style={{ padding: 10 }}>{r.usedQty}</td>
                 <td
                   style={{
                     padding: 10,
                     fontWeight: 700,
-                    color: r.remainingQty < 0 ? "crimson" : "inherit",
+                    color: r.remainingQty < r.minQty ? "crimson" : "inherit",
                   }}
                 >
                   {r.remainingQty}
@@ -310,6 +370,37 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
                     />
                     <button
                       onClick={() => saveOne(k)}
+                      disabled={busy}
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        cursor: busy ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </td>
+
+                <td style={{ padding: 10 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="number"
+                      value={Number.isFinite(draftMin) ? draftMin : 0}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setDraftMins((prev) => ({ ...prev, [k]: Number.isFinite(v) ? v : 0 }));
+                      }}
+                      style={{
+                        width: 110,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                      }}
+                    />
+                    <button
+                      onClick={() => saveMin(k)}
                       disabled={busy}
                       style={{
                         padding: "8px 10px",

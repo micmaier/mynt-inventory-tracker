@@ -27,21 +27,24 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Missing Shopify env vars" }, { status: 500 });
   }
 
-  const fromDate = parseFromParam(req);
+  // ✅ NEU: wenn kein from Param → serverseitiges DefaultFrom nutzen
+  const fromParam = parseFromParam(req);
+  const settings = await prisma.inventorySettings.findUnique({ where: { id: "default" } });
+  const fromDate = fromParam ?? settings?.defaultFrom ?? null;
+
   const createdAtMin = fromDate ? `${fromDate.toISOString().slice(0, 10)}T00:00:00+00:00` : undefined;
 
   try {
     // ✅ Punkt 3: alles außerhalb Zeitraum entfernen
     // Wenn ein Zeitraum gewählt ist: diesen Zeitraum immer frisch aufbauen
-  if (fromDate) {
-    await prisma.inventoryMovement.deleteMany({
-      where: { orderCreatedAt: { gte: fromDate } },
-    });
-    await prisma.processedOrder.deleteMany({
-      where: { orderCreatedAt: { gte: fromDate } },
-    });
-  }
-
+    if (fromDate) {
+      await prisma.inventoryMovement.deleteMany({
+        where: { orderCreatedAt: { gte: fromDate } },
+      });
+      await prisma.processedOrder.deleteMany({
+        where: { orderCreatedAt: { gte: fromDate } },
+      });
+    }
 
     const orders = await fetchPaidOrders(createdAtMin ? { createdAtMin } : undefined);
 
@@ -59,7 +62,10 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const bucket = new Map<string, { baseType: string; category: string; size: string; qty: number }>();
+      const bucket = new Map<
+        string,
+        { baseType: string; category: string; size: string; qty: number }
+      >();
 
       for (const li of o.line_items || []) {
         const cls = await classifyLineItem(li);

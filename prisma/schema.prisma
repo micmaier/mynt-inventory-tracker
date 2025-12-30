@@ -20,6 +20,7 @@ model InventoryStart {
   category     String
   size         String
   startQty     Int      @default(0)
+  minQty       Int      @default(0) // ✅ NEU
   updatedAt    DateTime @updatedAt
 
   @@unique([baseType, category, size], name: "baseType_category_size")
@@ -56,6 +57,13 @@ model ProcessedOrder {
 
   @@index([orderCreatedAt])
 }
+
+model InventorySettings {
+  id          String   @id @default("default")
+  defaultFrom DateTime?
+  updatedAt   DateTime @updatedAt
+}
+
 
 
 
