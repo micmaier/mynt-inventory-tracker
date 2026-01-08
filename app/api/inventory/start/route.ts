@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/db";
 import { z } from "zod";
-import { ALLOWED_SIZES } from "@/src/lib/inventory";
 
 const Body = z.object({
   secret: z.string(),
-  // ✅ vorher: z.enum(["P","U"])
-  // ✅ jetzt: auch "Pure White", "Wall Primer", ...
-  baseType: z
-    .string()
-    .trim()
-    .min(1, "baseType required")
-    .max(60, "baseType too long"),
-  category: z.enum(["Wandfarbe", "Lack"]),
-  size: z.enum(ALLOWED_SIZES),
+
+  baseType: z.string().trim().min(1, "baseType required").max(60, "baseType too long"),
+
+  // ✅ vorher: z.enum(["Wandfarbe","Lack"])
+  category: z.string().trim().min(1, "category required").max(120, "category too long"),
+
+  // ✅ vorher: z.enum(ALLOWED_SIZES)
+  size: z.string().trim().min(1, "size required").max(60, "size too long"),
+
   startQty: z.number().int().min(0),
 });
 
