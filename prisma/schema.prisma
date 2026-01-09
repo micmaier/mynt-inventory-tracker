@@ -64,6 +64,16 @@ model InventorySettings {
   updatedAt   DateTime @updatedAt
 }
 
+model InventoryEmailLog {
+  id          String   @id @default(cuid())
+  kind        String
+  forDate     DateTime // UTC day (00:00)
+  sentAt      DateTime @default(now())
+  criticalCnt Int      @default(0)
+
+  @@unique([kind, forDate], name: "kind_forDate")
+  @@index([forDate])
+}
 
 
 

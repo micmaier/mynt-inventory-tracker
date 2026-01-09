@@ -62,19 +62,24 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
     return `${r.baseType}|${r.category}|${r.size}`;
   }
 
+  async function persistDefaultFrom(nextFrom: string) {
+    if (!secret) return;
+    await fetch("/api/inventory/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret,
+        defaultFrom: nextFrom || null,
+      }),
+    });
+  }
+
   // ✅ NEU: Datum serverseitig als Default speichern (für Auto-Scan / Default-View)
   async function applyFrom() {
     // best effort: Speichern darf Navigation nicht blockieren
     if (secret) {
       try {
-        await fetch("/api/inventory/settings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            secret,
-            defaultFrom: from || null,
-          }),
-        });
+        await persistDefaultFrom(from);
       } catch {}
     }
 
@@ -202,6 +207,11 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
     setMsg("");
 
     try {
+      // ✅ best effort: sorgt dafür, dass "Scan now" das Datum ebenfalls dauerhaft setzt
+      try {
+        await persistDefaultFrom(from);
+      } catch {}
+
       const q = new URLSearchParams();
       q.set("secret", secret);
       if (from) q.set("from", from);

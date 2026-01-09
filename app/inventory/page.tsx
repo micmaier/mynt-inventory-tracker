@@ -9,21 +9,28 @@ function k(baseType: string, category: string, size: string) {
 }
 
 // ✅ Next 16 / Turbopack: searchParams kann Promise sein → wir geben hier nur Parsing für ein "plain object"
-function parseFrom(searchParams: Record<string, string | string[] | undefined>): Date {
+// Wir geben absichtlich string|null zurück, damit wir später sauber die Priorität setzen können:
+// 1) ?from=  2) settings.defaultFrom  3) heute
+function parseFromISO(searchParams: Record<string, string | string[] | undefined>): string | null {
   const raw = searchParams.from;
   const v = Array.isArray(raw) ? raw[0] : raw;
+  if (!v) return null;
 
-  // default: heute (UTC 00:00)
+  // nur YYYY-MM-DD akzeptieren
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  return v;
+}
+
+function todayISO_UTC(): string {
   const today = new Date();
   const y = today.getUTCFullYear();
   const m = String(today.getUTCMonth() + 1).padStart(2, "0");
   const d = String(today.getUTCDate()).padStart(2, "0");
-  const fallback = new Date(`${y}-${m}-${d}T00:00:00.000Z`);
+  return `${y}-${m}-${d}`;
+}
 
-  if (!v) return fallback;
-
-  const parsed = new Date(`${v}T00:00:00.000Z`);
-  return Number.isFinite(parsed.getTime()) ? parsed : fallback;
+function isoToDateUTC(iso: string): Date {
+  return new Date(`${iso}T00:00:00.000Z`);
 }
 
 function toMs(v: any): number {
@@ -41,8 +48,19 @@ export default async function InventoryPage({
 }) {
   const sp = await searchParams;
 
-  const fromDate = parseFrom(sp);
-  const fromISO = fromDate.toISOString().slice(0, 10);
+  // ✅ 1) URL Query holen
+  const qpFromISO = parseFromISO(sp);
+
+  // ✅ 2) serverseitig gespeichertes DefaultFrom holen
+  const settings = await prisma.inventorySettings.findUnique({ where: { id: "default" } });
+  const settingsFromISO = settings?.defaultFrom ? settings.defaultFrom.toISOString().slice(0, 10) : null;
+
+  // ✅ 3) Fallback: heute
+  const fallbackISO = todayISO_UTC();
+
+  // ✅ Priorität: Query → Settings → Today
+  const fromISO = qpFromISO ?? settingsFromISO ?? fallbackISO;
+  const fromDate = isoToDateUTC(fromISO);
   const fromMs = fromDate.getTime();
 
   const starts = await prisma.inventoryStart.findMany();
@@ -59,7 +77,12 @@ export default async function InventoryPage({
   });
 
   const startMap = new Map<string, { startQty: number; minQty: number }>();
-  for (const s of starts) startMap.set(k(s.baseType, s.category, s.size), { startQty: s.startQty ?? 0, minQty: s.minQty ?? 0 });
+  for (const s of starts) {
+    startMap.set(k(s.baseType, s.category, s.size), {
+      startQty: s.startQty ?? 0,
+      minQty: s.minQty ?? 0,
+    });
+  }
 
   const usedMap = new Map<string, number>();
   for (const m of moves) {
