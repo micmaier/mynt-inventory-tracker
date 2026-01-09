@@ -13,7 +13,8 @@ const Body = z.object({
   // ✅ vorher: z.enum(ALLOWED_SIZES)
   size: z.string().trim().min(1, "size required").max(60, "size too long"),
 
-  startQty: z.number().int().min(0),
+  // ✅ FIX: akzeptiert auch "12" als 12
+  startQty: z.coerce.number().int().min(0),
 });
 
 export async function POST(req: Request) {
