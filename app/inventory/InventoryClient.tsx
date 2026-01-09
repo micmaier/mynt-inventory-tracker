@@ -244,7 +244,7 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
   const visibleRows = useMemo(() => {
     const isColor = (r: Row) => r.category === "Wandfarbe" || r.category === "Lack";
     const isPigment = (r: Row) => r.category === "Pigmente";
-    const isLabel = (r: Row) => r.category === "Etikett";
+        const isLabel = (r: Row) => r.category === "Etikett Wandfarbe" || r.category === "Etikett Lack";
     const isShipping = (r: Row) => !isColor(r) && !isPigment(r) && !isLabel(r);
 
     if (filter === "Alle") return rows;

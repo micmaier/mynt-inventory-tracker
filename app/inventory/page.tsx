@@ -262,11 +262,11 @@ export default async function InventoryPage({
     "taste south!",
   ];
 
-  const labelItems: Array<{ baseType: string; category: string; size: string }> = labelNames.map((name) => ({
-    baseType: name,
-    category: "Etikett",
-    size: "-",
-  }));
+  const labelItems: Array<{ baseType: string; category: string; size: string }> = labelNames.flatMap((name) => [
+    { baseType: name, category: "Etikett Wandfarbe", size: "-" },
+    { baseType: name, category: "Etikett Lack", size: "-" },
+  ]);
+
 
   const manualItems = [...pigmentItems, ...shippingItems, ...labelItems];
 
