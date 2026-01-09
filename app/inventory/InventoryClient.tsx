@@ -19,6 +19,8 @@ type Props = {
   initialFrom: string; // YYYY-MM-DD
 };
 
+type Filter = "Alle" | "Farbe" | "Pigmente" | "Versandmaterial" | "Etiketten";
+
 export default function InventoryClient({ rows, initialFrom }: Props) {
   const router = useRouter();
 
@@ -29,6 +31,9 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
 
   // ✅ neues Date-State (default: heute bzw. URL-param)
   const [from, setFrom] = useState<string>(initialFrom || "");
+
+  // ✅ NEU: Filter-State (ändert nur die Anzeige)
+  const [filter, setFilter] = useState<Filter>("Alle");
 
   const [draftStarts, setDraftStarts] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
@@ -235,6 +240,21 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
     }
   }
 
+  // ✅ NEU: nur Anzeige filtern (keine Funktion ändert Verhalten)
+  const visibleRows = useMemo(() => {
+    const isColor = (r: Row) => r.category === "Wandfarbe" || r.category === "Lack";
+    const isPigment = (r: Row) => r.category === "Pigmente";
+    const isLabel = (r: Row) => r.category === "Etikett";
+    const isShipping = (r: Row) => !isColor(r) && !isPigment(r) && !isLabel(r);
+
+    if (filter === "Alle") return rows;
+    if (filter === "Farbe") return rows.filter(isColor);
+    if (filter === "Pigmente") return rows.filter(isPigment);
+    if (filter === "Etiketten") return rows.filter(isLabel);
+    if (filter === "Versandmaterial") return rows.filter(isShipping);
+    return rows;
+  }, [rows, filter]);
+
   return (
     <>
       <div style={{ padding: 12, border: "1px solid #ddd", borderRadius: 10, marginBottom: 16 }}>
@@ -265,6 +285,39 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
               onChange={(e) => setFrom(e.target.value)}
               style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #ccc" }}
             />
+          </label>
+
+          {/* ✅ NEU: Filter */}
+          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 13, color: "#666" }}>Filter</span>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as Filter)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid #ccc",
+                backgroundColor: "#fff",
+                color: "#111",
+              }}
+            >
+              <option value="Alle" style={{ color: "#111" }}>
+                Alle
+              </option>
+              <option value="Farbe" style={{ color: "#111" }}>
+                Farbe
+              </option>
+              <option value="Pigmente" style={{ color: "#111" }}>
+                Pigmente
+              </option>
+              <option value="Versandmaterial" style={{ color: "#111" }}>
+                Versandmaterial
+              </option>
+              <option value="Etiketten" style={{ color: "#111" }}>
+                Etiketten
+              </option>
+            </select>
+
           </label>
 
           <button
@@ -339,7 +392,7 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
         </thead>
 
         <tbody>
-          {rows.map((r, i) => {
+          {visibleRows.map((r, i) => {
             const k = key(r);
             const draft = draftStarts[k] ?? 0;
             const draftMin = draftMins[k] ?? 0;
