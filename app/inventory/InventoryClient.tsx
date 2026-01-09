@@ -431,6 +431,24 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
                         border: "1px solid #ccc",
                       }}
                     />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraftStarts((prev) => ({ ...prev, [k]: Number(r.remainingQty ?? 0) }));
+                      }}
+                      disabled={busy}
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        cursor: busy ? "not-allowed" : "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Use Remaining
+                    </button>
+
                     <button
                       onClick={() => saveOne(k)}
                       disabled={busy}
