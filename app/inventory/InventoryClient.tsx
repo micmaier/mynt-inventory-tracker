@@ -35,12 +35,6 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
   // ✅ NEU: Filter-State (ändert nur die Anzeige)
   const [filter, setFilter] = useState<Filter>("Alle");
 
-  const [draftStarts, setDraftStarts] = useState<Record<string, number>>(() => {
-    const init: Record<string, number> = {};
-    for (const r of rows) init[key(r)] = r.startQty ?? 0;
-    return init;
-  });
-
   const [draftMins, setDraftMins] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
     for (const r of rows) init[key(r)] = r.minQty ?? 0;
@@ -94,43 +88,6 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
     router.refresh();
   }
 
-  async function saveOne(k: string) {
-    const r = byKey.get(k);
-    if (!r) return;
-
-    if (!secret) {
-      setMsg("Bitte SCAN_SECRET eingeben (oben).");
-      return;
-    }
-
-    setBusy(true);
-    setMsg("");
-
-    try {
-      const res = await fetch("/api/inventory/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          secret,
-          baseType: r.baseType,
-          category: r.category,
-          size: r.size,
-          startQty: Number(draftStarts[k] ?? 0),
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Startwert speichern fehlgeschlagen.");
-
-      setMsg("Startwert gespeichert.");
-      router.refresh();
-    } catch (e: any) {
-      setMsg(e?.message || "Fehler beim Speichern.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function saveMin(k: string) {
     const r = byKey.get(k);
     if (!r) return;
@@ -163,40 +120,6 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
       router.refresh();
     } catch (e: any) {
       setMsg(e?.message || "Fehler beim Speichern.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveAll() {
-    if (!secret) {
-      setMsg("Bitte SCAN_SECRET eingeben (oben).");
-      return;
-    }
-
-    setBusy(true);
-    setMsg("");
-
-    try {
-      for (const r of rows) {
-        const k = key(r);
-        await fetch("/api/inventory/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            secret,
-            baseType: r.baseType,
-            category: r.category,
-            size: r.size,
-            startQty: Number(draftStarts[k] ?? 0),
-          }),
-        });
-      }
-
-      setMsg("Alle Startwerte gespeichert.");
-      router.refresh();
-    } catch {
-      setMsg("Fehler beim Speichern aller Startwerte.");
     } finally {
       setBusy(false);
     }
@@ -346,19 +269,6 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
             {busy ? "…" : "Scan now"}
           </button>
 
-          <button
-            onClick={saveAll}
-            disabled={busy}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid #ccc",
-              cursor: busy ? "not-allowed" : "pointer",
-            }}
-          >
-            {busy ? "…" : "Save all start values"}
-          </button>
-
           {/* ✅ Button zu scanned orders (mit gleichem from) */}
           <Link
             href={from ? `/scanned-orders?from=${encodeURIComponent(from)}` : "/scanned-orders"}
@@ -383,7 +293,7 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {["Base", "Kategorie", "Größe", "Start", "Min", "Used", "Remaining", "Set Start", "Set Min"].map((h) => (
+            {["Base", "Kategorie", "Größe", "Start", "Min", "Used", "Remaining", "Set Min"].map((h) => (
               <th key={h} style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 10 }}>
                 {h}
               </th>
@@ -394,7 +304,6 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
         <tbody>
           {visibleRows.map((r, i) => {
             const k = key(r);
-            const draft = draftStarts[k] ?? 0;
             const draftMin = draftMins[k] ?? 0;
 
             return (
@@ -413,55 +322,6 @@ export default function InventoryClient({ rows, initialFrom }: Props) {
                   }}
                 >
                   {r.remainingQty}
-                </td>
-
-                <td style={{ padding: 10 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input
-                      type="number"
-                      value={Number.isFinite(draft) ? draft : 0}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        setDraftStarts((prev) => ({ ...prev, [k]: Number.isFinite(v) ? v : 0 }));
-                      }}
-                      style={{
-                        width: 110,
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid #ccc",
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDraftStarts((prev) => ({ ...prev, [k]: Number(r.remainingQty ?? 0) }));
-                      }}
-                      disabled={busy}
-                      style={{
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid #ccc",
-                        cursor: busy ? "not-allowed" : "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Use Remaining
-                    </button>
-
-                    <button
-                      onClick={() => saveOne(k)}
-                      disabled={busy}
-                      style={{
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid #ccc",
-                        cursor: busy ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      Save
-                    </button>
-                  </div>
                 </td>
 
                 <td style={{ padding: 10 }}>
