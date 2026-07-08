@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mynt Impact Generator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          cream:   '#F7F3EC',
+          creamd:  '#EFE8DC',
+          mynt:    '#5F7A5E',
+          myntd:   '#47604A',
+          myntsoft:'#A9BCA3',
+          myntpale:'#DDE5D8',
+          slateink:'#2C3733',
+          slatesoft:'#5C6B63',
+        },
+        fontFamily: {
+          serif: ['Fraunces', 'Georgia', 'serif'],
+          sans:  ['Inter', 'Segoe UI', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { background: #EDE9E0; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+</style>
+</head>
+<body class="font-sans text-slateink min-h-screen">
+
+  <header class="border-b border-[#DCD4C4] bg-cream/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-[1500px] mx-auto px-6 py-4 flex items-center gap-4">
+      <span class="font-serif text-2xl font-semibold text-myntd">mynt</span>
+      <span class="text-slatesoft text-sm tracking-widest uppercase">Impact Generator</span>
+      <span class="ml-auto text-xs text-slatesoft">Nachhaltigkeits-Report</span>
+    </div>
+  </header>
+
+  <main class="max-w-[1500px] mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 items-start">
+
+    <!-- ===== Eingaben ===== -->
+    <section class="space-y-6 lg:sticky lg:top-24">
+      <div class="bg-white rounded-2xl border border-[#DCD4C4] p-6 shadow-sm">
+        <h2 class="font-serif text-xl font-semibold mb-5">Konfiguration</h2>
+
+        <label class="block text-sm font-medium mb-1.5" for="liter">Liter gestrichener Farbe</label>
+        <input id="liter" type="number" min="0" step="1" value="100"
+               class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
+
+        <div class="mt-5">
+          <span class="block text-sm font-medium mb-1.5">Anzahl Anstriche</span>
+          <div class="grid grid-cols-2 gap-2" id="coats-group">
+            <label class="cursor-pointer">
+              <input type="radio" name="coats" value="1" class="peer sr-only">
+              <span class="block text-center rounded-lg border border-[#DCD4C4] bg-cream px-3 py-2.5 text-sm font-medium peer-checked:bg-mynt peer-checked:text-white peer-checked:border-mynt transition">1 Anstrich</span>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="coats" value="2" checked class="peer sr-only">
+              <span class="block text-center rounded-lg border border-[#DCD4C4] bg-cream px-3 py-2.5 text-sm font-medium peer-checked:bg-mynt peer-checked:text-white peer-checked:border-mynt transition">2 Anstriche</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-5">
+          <div class="flex items-baseline justify-between mb-1.5">
+            <label class="text-sm font-medium" for="qm">Fläche in m²</label>
+            <button id="qm-reset" class="text-xs text-mynt hover:text-myntd underline underline-offset-2 hidden">auf Formelwert zurücksetzen</button>
+          </div>
+          <input id="qm" type="text" inputmode="decimal"
+                 class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
+          <p class="mt-1.5 text-xs text-slatesoft" id="qm-hint">Automatisch berechnet – kann manuell überschrieben werden.</p>
+        </div>
+
+        <div class="mt-5">
+          <div class="flex items-baseline justify-between mb-1.5">
+            <span class="text-sm font-medium">Eigenes Logo</span>
+            <span class="text-xs text-slatesoft">optional · PNG oder JPG</span>
+          </div>
+          <input id="logo-file" type="file" accept="image/png,image/jpeg" class="hidden">
+          <button id="logo-pick" type="button"
+                  class="w-full rounded-lg border border-dashed border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-sm text-slatesoft hover:border-mynt hover:text-myntd transition">
+            + Logo auswählen…
+          </button>
+          <div id="logo-info" class="hidden items-center gap-3 rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2">
+            <img id="logo-thumb" alt="Logo-Vorschau" class="h-10 max-w-[120px] object-contain">
+            <span id="logo-name" class="text-xs text-slatesoft truncate flex-1"></span>
+            <button id="logo-remove" type="button" class="text-xs text-red-700 hover:text-red-900 underline underline-offset-2 shrink-0">Entfernen</button>
+          </div>
+          <p id="logo-error" class="hidden mt-1.5 text-xs text-red-700"></p>
+          <p class="mt-1.5 text-xs text-slatesoft">Erscheint unten links im blauen Partner-Footer (Seiten 2–4). Transparentes PNG empfohlen.</p>
+        </div>
+
+        <div class="mt-5">
+          <label class="block text-sm font-medium mb-1.5" for="email">E-Mail-Adresse <span class="text-slatesoft font-normal">(für den Download erforderlich)</span></label>
+          <input id="email" type="email" autocomplete="email" placeholder="name@firma.de"
+                 class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
+          <p id="email-error" class="hidden mt-1.5 text-xs text-red-700">Bitte eine gültige E-Mail-Adresse eingeben.</p>
+
+          <label class="mt-3 flex items-start gap-2.5 cursor-pointer select-none">
+            <input id="optin" type="checkbox"
+                   class="mt-0.5 h-4 w-4 shrink-0 rounded border-[#DCD4C4] accent-[#47604A]">
+            <span class="text-xs leading-relaxed text-slatesoft">Ich bin damit einverstanden, dass meine E-Mail-Adresse zur Information über diesen Download an Mynt (info@mynthome.de) übermittelt wird und Mynt mich dazu per E-Mail kontaktieren darf. <span class="text-red-700">*</span></span>
+          </label>
+          <p id="optin-error" class="hidden mt-1.5 text-xs text-red-700">Bitte der Einwilligung zustimmen, um den Report herunterzuladen.</p>
+        </div>
+
+        <a id="pdf-btn" href="#"
+           class="mt-6 flex items-center justify-center gap-2 w-full rounded-xl bg-myntd hover:bg-mynt text-white font-semibold px-4 py-3.5 transition shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+          PDF herunterladen
+        </a>
+        <p class="mt-2 text-[11px] leading-relaxed text-slatesoft">Hinweis: Die Baum-Metrik wird nur in der Web-Vorschau angezeigt und ist im PDF-Download nicht enthalten.</p>
+      </div>
+
+      <!-- Berechnete Werte (Kontrolle) -->
+      <div class="bg-white rounded-2xl border border-[#DCD4C4] p-6 shadow-sm">
+        <h2 class="font-serif text-xl font-semibold mb-4">Berechnete Werte</h2>
+        <dl class="space-y-2.5 text-sm" id="calc-table"></dl>
+      </div>
+    </section>
+
+    <!-- ===== Live-Vorschau ===== -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-serif text-xl font-semibold">Live-Vorschau <span class="text-sm font-sans font-normal text-slatesoft">(alle 4 Seiten)</span></h2>
+        <a id="open-report" href="#" target="_blank" class="text-sm text-mynt hover:text-myntd underline underline-offset-2">In neuem Tab öffnen</a>
+      </div>
+      <div class="rounded-2xl border border-[#DCD4C4] bg-[#E8E4DB] overflow-hidden shadow-inner">
+        <iframe id="preview" title="Report-Vorschau" class="w-full block" style="height: calc(100vh - 180px); min-height: 700px; border: 0;"></iframe>
+      </div>
+    </section>
+  </main>
+
+<script src="calc.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="pdf-client.js"></script>
+<script>
+  (function () {
+    const { computeImpact, fmtDE } = window.MyntImpact;
+
+    const $liter   = document.getElementById('liter');
+    const $qm      = document.getElementById('qm');
+    const $qmReset = document.getElementById('qm-reset');
+    const $qmHint  = document.getElementById('qm-hint');
+    const $preview = document.getElementById('preview');
+    const $pdfBtn  = document.getElementById('pdf-btn');
+    const $openRep = document.getElementById('open-report');
+    const $table   = document.getElementById('calc-table');
+
+    let qmDirty = false;   // wurde m² manuell überschrieben?
+    let debounceTimer = null;
+    let logoDataUrl = '';  // Data-URL des gewählten Logos ('' = kein Logo)
+    let logoVersion = 0;   // erzwingt Neuladen der Vorschau bei Logo-Änderung
+
+    function currentCoats() {
+      const checked = document.querySelector('input[name="coats"]:checked');
+      return checked ? checked.value : '2';
+    }
+
+    function reportParams() {
+      return new URLSearchParams({
+        liter: $liter.value || '0',
+        coats: currentCoats(),
+        qm: qmDirty ? $qm.value.trim() : '',
+      }).toString();
+    }
+
+    function row(label, value, highlight) {
+      return `<div class="flex justify-between gap-4 ${highlight ? 'font-semibold text-myntd' : ''}">
+                <dt class="text-slatesoft ${highlight ? 'text-myntd' : ''}">${label}</dt>
+                <dd class="text-right whitespace-nowrap">${value}</dd>
+              </div>`;
+    }
+
+    function update() {
+      const r = computeImpact($liter.value, currentCoats());
+
+      // m²-Feld: nur automatisch füllen, solange nicht manuell überschrieben
+      if (!qmDirty) {
+        $qm.value = fmtDE(r.qmAuto);
+        $qmReset.classList.add('hidden');
+        $qmHint.textContent = 'Automatisch berechnet – kann manuell überschrieben werden.';
+      } else {
+        $qmReset.classList.remove('hidden');
+        $qmHint.textContent = 'Manuell überschrieben – Formelwert wäre ' + fmtDE(r.qmAuto) + ' m².';
+      }
+
+      $table.innerHTML = [
+        row('Fläche (Formel)', fmtDE(r.qmAuto) + ' m²'),
+        row('Liter Farbe konventionell', fmtDE(r.literKonventionell, 1) + ' L'),
+        row('Einsparung Liter', fmtDE(r.einsparungLiter, 1) + ' L'),
+        row('CO₂e Emissionen', '45 % weniger (fix)'),
+        row('Mikroplastik (Maximalwert)', fmtDE(Math.round(r.mikroplastikMax)) + ' kg', true),
+        row('Mikroplastik (untere Grenze)', fmtDE(r.mikroplastikMin, 1) + ' kg'),
+        row('Ocean-Bound Plastik', fmtDE(r.oceanBoundKg) + ' kg', true),
+        row('Rest-Liter → Bäume', fmtDE(r.restLiter, 1) + ' L → ' + fmtDE(r.baeume) + ' Bäume'),
+        row('Plastik gesamt', fmtDE(Math.round(r.plastikGesamtKg)) + ' kg', true),
+        row('Äquivalent Plastiktüten', fmtDE(Math.round(r.plastiktueten)), true),
+      ].join('');
+
+      const params = reportParams();
+      $preview.src = 'report.html?' + params + '&lv=' + logoVersion;
+      $openRep.href = 'report.html?' + params;
+    }
+
+    function scheduleUpdate() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(update, 350);
+    }
+
+    $liter.addEventListener('input', scheduleUpdate);
+    document.querySelectorAll('input[name="coats"]').forEach(el =>
+      el.addEventListener('change', () => { update(); })
+    );
+    $qm.addEventListener('input', () => { qmDirty = true; scheduleUpdate(); });
+    $qmReset.addEventListener('click', (e) => { e.preventDefault(); qmDirty = false; update(); });
+
+    // ---------- Eigenes Logo (optional) ----------
+    const $logoFile   = document.getElementById('logo-file');
+    const $logoPick   = document.getElementById('logo-pick');
+    const $logoInfo   = document.getElementById('logo-info');
+    const $logoThumb  = document.getElementById('logo-thumb');
+    const $logoName   = document.getElementById('logo-name');
+    const $logoRemove = document.getElementById('logo-remove');
+    const $logoError  = document.getElementById('logo-error');
+
+    function showLogoError(msg) {
+      $logoError.textContent = msg;
+      $logoError.classList.remove('hidden');
+    }
+
+    $logoPick.addEventListener('click', () => $logoFile.click());
+
+    // Logo lokal auf max. 800 px herunterrechnen → kleine Data-URL für
+    // Vorschau (sessionStorage) und PDF-Erzeugung. Kein Server-Upload.
+    function fileToScaledDataUrl(file, maxPx) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+          const cw = Math.max(1, Math.round(img.naturalWidth * scale));
+          const ch = Math.max(1, Math.round(img.naturalHeight * scale));
+          const c = document.createElement('canvas');
+          c.width = cw; c.height = ch;
+          c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+          resolve(c.toDataURL('image/png')); // PNG erhält Transparenz
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht gelesen werden')); };
+        img.src = url;
+      });
+    }
+
+    $logoFile.addEventListener('change', async () => {
+      $logoError.classList.add('hidden');
+      const f = $logoFile.files[0];
+      if (!f) return;
+      if (!/^image\/(png|jpeg)$/.test(f.type)) {
+        showLogoError('Bitte nur PNG oder JPG hochladen.');
+        $logoFile.value = '';
+        return;
+      }
+      if (f.size > 8 * 1024 * 1024) {
+        showLogoError('Datei zu groß (max. 8 MB).');
+        $logoFile.value = '';
+        return;
+      }
+      try {
+        logoDataUrl = await fileToScaledDataUrl(f, 800);
+        try { sessionStorage.setItem('myntLogo', logoDataUrl); } catch (e) { /* Quota */ }
+        $logoThumb.src = logoDataUrl;
+        $logoName.textContent = f.name;
+        $logoPick.classList.add('hidden');
+        $logoInfo.classList.remove('hidden');
+        $logoInfo.classList.add('flex');
+        logoVersion++;
+        update();
+      } catch (err) {
+        showLogoError('Logo konnte nicht verarbeitet werden: ' + err.message);
+        $logoFile.value = '';
+      }
+    });
+
+    $logoRemove.addEventListener('click', () => {
+      logoDataUrl = '';
+      try { sessionStorage.removeItem('myntLogo'); } catch (e) {}
+      $logoFile.value = '';
+      $logoInfo.classList.add('hidden');
+      $logoInfo.classList.remove('flex');
+      $logoPick.classList.remove('hidden');
+      logoVersion++;
+      update();
+    });
+
+    // ---------- E-Mail-Pflicht + Opt-In für den PDF-Download ----------
+    const $email      = document.getElementById('email');
+    const $emailError = document.getElementById('email-error');
+    const $optin      = document.getElementById('optin');
+    const $optinError = document.getElementById('optin-error');
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    async function handleDownload() {
+      const em = $email.value.trim();
+      let ok = true;
+      if (!EMAIL_RE.test(em)) {
+        $emailError.classList.remove('hidden');
+        $email.classList.add('border-red-400');
+        ok = false;
+      }
+      if (!$optin.checked) {
+        $optinError.classList.remove('hidden');
+        ok = false;
+      }
+      if (!ok) {
+        (!EMAIL_RE.test(em) ? $email : $optin).focus();
+        return;
+      }
+      $emailError.classList.add('hidden');
+      $optinError.classList.add('hidden');
+      $email.classList.remove('border-red-400');
+
+      const originalHtml = $pdfBtn.innerHTML;
+      $pdfBtn.style.pointerEvents = 'none';
+      $pdfBtn.classList.add('opacity-70');
+      $pdfBtn.textContent = 'PDF wird erstellt…';
+
+      const payload = {
+        email: em, consent: 1,
+        liter: $liter.value, coats: currentCoats(),
+        qm: qmDirty ? $qm.value.trim() : '', logo: !!logoDataUrl,
+      };
+
+      try {
+        // Benachrichtigung an info@mynthome.de – ein Fehler blockiert den Download nicht
+        try {
+          await fetch('api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch (e) { /* Netzwerk-/Serverfehler ignorieren */ }
+
+        // PDF vollständig im Browser erzeugen und herunterladen
+        await window.MyntPdf.generate({
+          liter: $liter.value || '0',
+          coats: currentCoats(),
+          qm: qmDirty ? $qm.value.trim() : '',
+          logoDataUrl,
+        });
+      } catch (err) {
+        alert('PDF konnte nicht erstellt werden: ' + err.message);
+      } finally {
+        $pdfBtn.innerHTML = originalHtml;
+        $pdfBtn.style.pointerEvents = '';
+        $pdfBtn.classList.remove('opacity-70');
+      }
+    }
+
+    $pdfBtn.addEventListener('click', (e) => { e.preventDefault(); handleDownload(); });
+    $email.addEventListener('input', () => {
+      $emailError.classList.add('hidden');
+      $email.classList.remove('border-red-400');
+    });
+    $optin.addEventListener('change', () => {
+      if ($optin.checked) $optinError.classList.add('hidden');
+    });
+
+    update();
+  })();
+</script>
+</body>
+</html>

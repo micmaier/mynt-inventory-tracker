@@ -1,0 +1,13 @@
+{
+  "name": "mynt-impact-generator",
+  "version": "2.0.0",
+  "description": "Mynt Impact-Report-Generator – statische Web-App + Vercel-Mailfunktion",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test:mail": "node tools/test-mail.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mynt Impact Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /*
+   * Seiten 1–4 sind hochauflösende Renderings der ORIGINAL-PDF (assets/page*.png).
+   * Nur auf Seite 2 werden die dynamischen Werte als Overlays exakt an den
+   * Originalpositionen (aus der PDF extrahierte pt-Koordinaten) darübergelegt.
+   *
+   * Original-Farben (aus der PDF gesampelt):
+   *   Seitenhintergrund/Text  #2e384b
+   *   Creme-Karten            #fbf6f2
+   *   Rosa-Karte (36 kg)      #f5c9de
+   *   Blau-Karte (10 kg)      #407ab9
+   */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { background: #1f2735; }
+
+  @page { size: A4 portrait; margin: 0; }
+
+  .page {
+    /* A4 hoch – identisch zur Original-PDF (595.5 x 842.2 pt) */
+    width: 595.5pt;
+    height: 842.2pt;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+    background: #2e384b;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .page > img.bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ---------- Bildschirm-Vorschau ---------- */
+  body.screen { padding: 24px 0; }
+  body.screen .pages { width: 595.5pt; margin: 0 auto; }
+  body.screen .page {
+    margin: 0 auto 28px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+  }
+  body.pdf { background: #ffffff; }
+
+  /* ---------- Overlays Seite 2 ---------- */
+  .ov {
+    position: absolute;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: #2e384b;
+    line-height: 1;
+    white-space: nowrap;
+    display: flex;
+    align-items: flex-end;   /* Text sitzt an der Unterkante des Patches */
+  }
+  /* Patch deckt die Originalzahl ab; die exakte Baseline-Position wird zur
+     Laufzeit per Canvas-Fontmetrik berechnet (siehe alignBaselines unten) */
+  .ov.val-lg { font-size: 32.5pt; font-weight: 500; letter-spacing: 0.01em; }
+  .ov.val-sm { font-size: 10.5pt; font-weight: 600; letter-spacing: 0.005em; }
+  .ov.on-pink  { background: #f5c9de; }
+  .ov.on-blue  { background: #407ab9; color: #ffffff; }
+  .ov.on-cream { background: #fbf6f2; }
+
+  /* Kalibrierhilfe: ?debug=1 zeigt Patches transparent-rot */
+  body.debug .ov { background: rgba(255, 0, 0, 0.25) !important; outline: 1px solid red; }
+  body.debug .partner-logo { outline: 1px solid red; }
+
+  /* Optionales Kunden-Logo: fester Slot unten links im blauen Partner-Footer
+     (Footer-Bande beginnt bei y=720.5pt, Text ab x=107.7pt – der Slot liegt
+     vollständig davor). Das Logo wird per object-fit:contain in den Slot
+     eingepasst und kann nie über ihn hinausragen. */
+  .partner-logo {
+    position: absolute;
+    left: 27pt;
+    top: 748pt;
+    width: 70pt;
+    height: 60pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .partner-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  /* Baum-Metrik: NUR Web-Vorschau, im PDF vollständig ausgeblendet */
+  .tree-banner {
+    position: absolute;
+    left: 27pt;
+    right: 27pt;
+    top: 524pt;
+    height: 34pt;
+    border: 1.5px dashed rgba(255, 255, 255, 0.55);
+    border-radius: 6pt;
+    display: flex;
+    align-items: center;
+    gap: 10pt;
+    padding: 0 12pt;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: #ffffff;
+  }
+  .tree-banner .tb-value { font-size: 14pt; font-weight: 600; }
+  .tree-banner .tb-note { margin-left: auto; font-size: 7.5pt; opacity: 0.75; }
+  body.pdf .web-only { display: none !important; }
+</style>
+</head>
+<body>
+<div class="pages">
+
+  <!-- SEITE 1: Original-Cover, unverändert -->
+  <section class="page"><img class="bg" src="assets/page1.png" alt="Impact Report – Cover"></section>
+
+  <!-- SEITE 2: Original als Hintergrund + dynamische Overlays -->
+  <section class="page">
+    <img class="bg" src="assets/page2.png" alt="Impact – Kennzahlen">
+
+    <!-- Kopf: Liter + Fläche (Creme-Karten)
+         data-baseline = visuelle Original-Baseline (PDF-Baseline + 8.3pt, pixelvermessen)
+         Patches liegen vollständig innerhalb der Kartenflächen (Kanten pixelvermessen) -->
+    <div class="ov val-lg on-cream" id="ov-liter"  data-baseline="209.2" style="left: 39.5pt; top: 159pt; width: 148.5pt; height: 57pt;">100 L</div>
+    <div class="ov val-lg on-cream" id="ov-qm"     data-baseline="209.2" style="left: 219.8pt; top: 159pt; width: 161.2pt; height: 57pt;">450 m²</div>
+
+    <!-- Stat-Karten (Patches enden vor den Kreis-Badges 2/3) -->
+    <div class="ov val-lg on-pink"  id="ov-mikro"  data-baseline="324.2" style="left: 224pt; top: 296pt; width: 134.5pt; height: 40pt;">36 kg</div>
+    <div class="ov val-lg on-blue"  id="ov-ocean"  data-baseline="324.2" style="left: 408pt; top: 296pt; width: 134.5pt; height: 40pt;">10 kg</div>
+    <div class="ov val-sm on-cream" id="ov-line46" data-baseline="428.4" style="left: 227pt; top: 418pt; width: 248pt; height: 14pt;">46 kg eingesparter Kunststoff entsprechen:</div>
+    <div class="ov val-lg on-cream" id="ov-tueten" data-baseline="471.4" style="left: 226pt; top: 444pt; width: 124pt; height: 33pt;">2.300</div>
+
+    <!-- Baum-Metrik: nur Web-Vorschau -->
+    <div class="tree-banner web-only">
+      <span class="tb-value">🌱 <span id="ov-baeume">0</span> Bäume gepflanzt</span>
+      <span class="tb-note">Nur Web-Vorschau – erscheint nicht im PDF-Download</span>
+    </div>
+
+    <div class="partner-logo"></div>
+  </section>
+
+  <!-- SEITE 3: Original, unverändert -->
+  <section class="page">
+    <img class="bg" src="assets/page3.png" alt="Über Mynt">
+    <div class="partner-logo"></div>
+  </section>
+
+  <!-- SEITE 4: Original-Erläuterungen, unverändert -->
+  <section class="page">
+    <img class="bg" src="assets/page4.png" alt="Erläuterungen">
+    <div class="partner-logo"></div>
+  </section>
+
+</div>
+
+<script src="calc.js"></script>
+<script>
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const isPdf = params.get('pdf') === '1';
+    document.body.classList.add(isPdf ? 'pdf' : 'screen');
+    if (params.get('debug') === '1') document.body.classList.add('debug');
+
+    const liter = params.get('liter') || 100;
+    const coats = params.get('coats') || 2;
+    const qmOverride = (params.get('qm') || '').trim();
+
+    const { computeDisplay, fmtDE } = window.MyntImpact;
+    const d = computeDisplay(liter, coats, qmOverride);
+
+    const set = (id, val) => { document.getElementById(id).textContent = val; };
+    set('ov-liter', d.liter);
+    set('ov-qm', d.qm);
+    set('ov-mikro', d.mikro);
+    set('ov-ocean', d.ocean);
+    set('ov-line46', d.line46);
+    set('ov-tueten', d.tueten);
+    set('ov-baeume', d.baeume);
+
+    // Optionales Kunden-Logo (als Data-URL in sessionStorage abgelegt) in die
+    // Footer-Slots (Seiten 2-4) laden – rein clientseitig, kein Server nötig.
+    let logoUrl = '';
+    try { logoUrl = sessionStorage.getItem('myntLogo') || ''; } catch (e) {}
+    if (logoUrl) {
+      document.querySelectorAll('.partner-logo').forEach(slot => {
+        const img = new Image();
+        img.alt = 'Partner-Logo';
+        img.onerror = () => img.remove();
+        img.src = logoUrl;
+        slot.appendChild(img);
+      });
+    }
+
+    // Overlay-Baselines exakt auf die Original-Baselines der PDF setzen.
+    // Bei line-height:1 liegt die Baseline (F - Ascent + Descent)/2 über der
+    // Unterkante der Textbox; daraus ergibt sich das nötige padding-bottom.
+    function alignBaselines() {
+      const ctx = document.createElement('canvas').getContext('2d');
+      const PT2PX = 96 / 72;
+      document.querySelectorAll('.ov[data-baseline]').forEach(el => {
+        const isLg = el.classList.contains('val-lg');
+        const Fpt = isLg ? 32.5 : 10.5;
+        ctx.font = `${isLg ? 500 : 600} ${Fpt * PT2PX}px Inter, sans-serif`;
+        const m = ctx.measureText('0');
+        const baseFromBottomPx = (Fpt * PT2PX - m.fontBoundingBoxAscent + m.fontBoundingBoxDescent) / 2;
+        const patchBottomPt = parseFloat(el.style.top) + parseFloat(el.style.height);
+        const padPx = (patchBottomPt - parseFloat(el.dataset.baseline)) * PT2PX - baseFromBottomPx;
+        el.style.paddingBottom = Math.max(0, padPx) + 'px';
+      });
+    }
+    document.fonts.ready.then(alignBaselines);
+
+    // Vorschau: Seiten auf Fensterbreite skalieren (nicht im PDF-Modus)
+    if (!isPdf) {
+      const wrap = document.querySelector('.pages');
+      const PAGE_W = (595.5 / 72) * 96; // Seitenbreite in CSS-Pixel
+      function fit() {
+        wrap.style.zoom = Math.min(1, (document.documentElement.clientWidth - 32) / PAGE_W);
+      }
+      fit();
+      window.addEventListener('resize', fit);
+    }
+  })();
+</script>
+</body>
+</html>

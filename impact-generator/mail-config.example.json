@@ -1,0 +1,6 @@
+{
+  "_hinweis": "Diese Datei nach mail-config.json kopieren. resendApiKey = RESEND_API_KEY des Inventory Trackers (Vercel → Settings → Environment Variables), from = RESEND_FROM des Inventory Trackers. Ohne mail-config.json (oder mit Platzhaltern) werden Downloads nur in downloads.log protokolliert. Alternativ funktionieren auch die Umgebungsvariablen RESEND_API_KEY / RESEND_FROM / NOTIFY_TO.",
+  "resendApiKey": "re_XXXXXXXXXXXXXXXXXXXXXXXX",
+  "from": "Mynt Inventory <alerts@mynthome.de>",
+  "notifyTo": "info@mynthome.de"
+}
