@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
-  "public": true,
-  "functions": {
-    "api/notify.js": {
-      "memory": 128,
-      "maxDuration": 10
-    }
-  }
+  "framework": null,
+  "outputDirectory": "public"
 }
