@@ -112,5 +112,22 @@
     logoSlot: { x: 27, y: 748, w: 70, h: 60 },
   };
 
-  global.MyntImpact = { computeImpact, fmtDE, computeDisplay, PDF_SPEC };
+  /**
+   * Rechtlicher Hinweis – gemeinsame Quelle für Dashboard, Vorschau UND PDF,
+   * damit der Wortlaut überall identisch ist. Auf Seite 2 (Zertifikat) wird
+   * er im freien dunkelblauen Bereich zwischen Kennzahlen und Auszeichnungen
+   * platziert (Position in Original-PDF-Punkten).
+   */
+  var DISCLAIMER = {
+    lines: [
+      'Dieser selbst erstellte Impact Report dient ausschließlich der eigenen Verwendung und ist kein offizielles Dokument für Werbezwecke.',
+      'Für Werbezwecke gilt ausschließlich der direkt von Mynt ausgestellte Impact Report mit Unterschrift und gültiger Zertifikat-Nummer.',
+      'Offiziellen Impact Report anfordern: ',
+    ],
+    email: 'info@mynthome.de',
+    // Zeichenposition auf Seite 2 (pt): x, Baseline der 1. Zeile, Zeilenhöhe, Schriftgröße
+    pdf: { x: 27, firstBaseline: 570, lineHeight: 10.5, size: 7.5, color: 'rgba(255,255,255,0.65)' },
+  };
+
+  global.MyntImpact = { computeImpact, fmtDE, computeDisplay, PDF_SPEC, DISCLAIMER };
 })(typeof window !== 'undefined' ? window : globalThis);

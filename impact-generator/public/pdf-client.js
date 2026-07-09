@@ -70,6 +70,8 @@
       var fx = img.naturalWidth / spec.pagePt.w;
       var fy = img.naturalHeight / spec.pagePt.h;
 
+      var emailLinkRect = null;
+
       if (pageNo === 2) {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
@@ -83,6 +85,30 @@
           ctx.font = f.weight + ' ' + (f.size * fy) + 'px Inter, sans-serif';
           ctx.fillText(disp[f.key], f.x * fx, f.baseline * fy);
         });
+
+        // Rechtlicher Hinweis (Wortlaut aus calc.js) – letzte Zeile endet mit
+        // der E-Mail-Adresse, die unterstrichen und (unten) verlinkt wird.
+        var D = MI.DISCLAIMER;
+        ctx.fillStyle = D.pdf.color;
+        ctx.font = '400 ' + (D.pdf.size * fy) + 'px Inter, sans-serif';
+        D.lines.forEach(function (line, li) {
+          var baseY = (D.pdf.firstBaseline + li * D.pdf.lineHeight) * fy;
+          ctx.fillText(line, D.pdf.x * fx, baseY);
+          if (li === D.lines.length - 1) {
+            var prefixW = ctx.measureText(line).width;
+            var emailW = ctx.measureText(D.email).width;
+            ctx.fillText(D.email, D.pdf.x * fx + prefixW, baseY);
+            // Unterstreichung als Link-Affordanz
+            ctx.fillRect(D.pdf.x * fx + prefixW, baseY + 1.5 * fy, emailW, 0.6 * fy);
+            // Rechteck (in pt) für die spätere PDF-Link-Annotation merken
+            emailLinkRect = {
+              x: D.pdf.x + prefixW / fx,
+              y: D.pdf.firstBaseline + li * D.pdf.lineHeight - D.pdf.size,
+              w: emailW / fx,
+              h: D.pdf.size + 3,
+            };
+          }
+        });
       }
 
       if (logoImg && (pageNo === 2 || pageNo === 3 || pageNo === 4)) {
@@ -92,6 +118,15 @@
 
       if (i > 0) doc.addPage();
       doc.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, PW, PH, undefined, 'FAST');
+
+      // Klickbarer mailto-Link auf der E-Mail-Adresse des Hinweises (Seite 2).
+      // Seiten-pt → A4-pt umrechnen (595.5 → 595.28).
+      if (emailLinkRect) {
+        var lx = PW / spec.pagePt.w;
+        var ly = PH / spec.pagePt.h;
+        doc.link(emailLinkRect.x * lx, emailLinkRect.y * ly, emailLinkRect.w * lx, emailLinkRect.h * ly,
+          { url: 'mailto:' + MI.DISCLAIMER.email });
+      }
     }
 
     var literSafe = String(opts.liter).replace(/[^\d]/g, '') || 'X';

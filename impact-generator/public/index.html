@@ -119,6 +119,7 @@
           PDF herunterladen
         </a>
         <p class="mt-2 text-[11px] leading-relaxed text-slatesoft">Hinweis: Die Baum-Metrik wird nur in der Web-Vorschau angezeigt und ist im PDF-Download nicht enthalten.</p>
+        <p id="disclaimer-note" class="mt-2 pt-2 border-t border-[#EFE8DC] text-[11px] leading-relaxed text-slatesoft"></p>
       </div>
 
       <!-- Berechnete Werte (Kontrolle) -->
@@ -365,6 +366,18 @@
         $pdfBtn.classList.remove('opacity-70');
       }
     }
+
+    // Rechtlicher Hinweis (gemeinsamer Wortlaut aus calc.js) unter dem Download-Button
+    (function () {
+      const D = window.MyntImpact.DISCLAIMER;
+      const note = document.getElementById('disclaimer-note');
+      note.appendChild(document.createTextNode(D.lines.join(' ')));
+      const a = document.createElement('a');
+      a.href = 'mailto:' + D.email;
+      a.textContent = D.email;
+      a.className = 'underline underline-offset-2 text-myntd hover:text-mynt';
+      note.appendChild(a);
+    })();
 
     $pdfBtn.addEventListener('click', (e) => { e.preventDefault(); handleDownload(); });
     $email.addEventListener('input', () => {

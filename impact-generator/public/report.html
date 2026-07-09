@@ -115,6 +115,20 @@
   .tree-banner .tb-value { font-size: 14pt; font-weight: 600; }
   .tree-banner .tb-note { margin-left: auto; font-size: 7.5pt; opacity: 0.75; }
   body.pdf .web-only { display: none !important; }
+
+  /* Rechtlicher Hinweis auf dem Zertifikat (Seite 2) – erscheint in Vorschau
+     UND PDF an derselben festen Position (Wortlaut aus calc.js) */
+  .cert-note {
+    position: absolute;
+    left: 27pt;
+    right: 27pt;
+    top: 562.5pt;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-size: 7.5pt;
+    line-height: 10.5pt;
+    color: rgba(255, 255, 255, 0.65);
+  }
+  .cert-note a { color: inherit; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -144,6 +158,9 @@
       <span class="tb-value">🌱 <span id="ov-baeume">0</span> Bäume gepflanzt</span>
       <span class="tb-note">Nur Web-Vorschau – erscheint nicht im PDF-Download</span>
     </div>
+
+    <!-- Rechtlicher Hinweis (Wortlaut aus calc.js, per JS eingesetzt) -->
+    <div class="cert-note" id="cert-note"></div>
 
     <div class="partner-logo"></div>
   </section>
@@ -185,6 +202,22 @@
     set('ov-line46', d.line46);
     set('ov-tueten', d.tueten);
     set('ov-baeume', d.baeume);
+
+    // Rechtlicher Hinweis (gemeinsamer Wortlaut aus calc.js) auf Seite 2
+    (function () {
+      const D = window.MyntImpact.DISCLAIMER;
+      const note = document.getElementById('cert-note');
+      D.lines.forEach((line, li) => {
+        if (li > 0) note.appendChild(document.createElement('br'));
+        note.appendChild(document.createTextNode(line));
+        if (li === D.lines.length - 1) {
+          const a = document.createElement('a');
+          a.href = 'mailto:' + D.email;
+          a.textContent = D.email;
+          note.appendChild(a);
+        }
+      });
+    })();
 
     // Optionales Kunden-Logo (als Data-URL in sessionStorage abgelegt) in die
     // Footer-Slots (Seiten 2-4) laden – rein clientseitig, kein Server nötig.
