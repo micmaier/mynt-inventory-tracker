@@ -59,6 +59,15 @@
     };
   }
 
+  /**
+   * Umkehrfunktion der m²-Formel: berechnet die Litermenge aus der Wandfläche.
+   * 1 Anstrich: L = qm / 9   ·   2 Anstriche: L = qm × 2 / 9
+   */
+  function literFromQm(qm, coats) {
+    const q = Math.max(0, Number(qm) || 0);
+    return Number(coats) === 2 ? (q * 2) / 9 : q / 9;
+  }
+
   /** Deutsche Zahlenformatierung, z. B. 2300 → "2.300" */
   function fmtDE(n, maxDigits) {
     return Number(n).toLocaleString('de-DE', {
@@ -79,7 +88,7 @@
       ? String(qmOverride).trim()
       : fmtDE(r.qmAuto);
     return {
-      liter: fmtDE(r.liter) + ' L',
+      liter: fmtDE(r.liter, 1) + ' L',
       qm: qm + ' m²',
       mikro: fmtDE(Math.round(r.mikroplastikMax)) + ' kg',
       ocean: fmtDE(r.oceanBoundKg) + ' kg',
@@ -110,7 +119,68 @@
     ],
     // Optionaler Kunden-Logo-Slot (Seiten 2–4), unten links im blauen Footer
     logoSlot: { x: 27, y: 748, w: 70, h: 60 },
+    // Optionale Projektname-Karte: ersetzt das Produktfoto (3. Karte oben).
+    // rect = pixelvermessene Foto-Kartenfläche; Baselines identisch zu den
+    // Nachbarkarten ("100 L" 209.2 / Label "Wandfarbe" 251.9).
+    projectCard: {
+      rect: { x: 392.25, y: 157.5, w: 176.75, h: 114 },
+      pad: 12.3,
+      label: { text: 'Projektname', size: 10.5, weight: 400, baseline: 251.9 },
+      name: { baseSize: 32.5, minSize: 11, weight: 500, centerBaseline: 209.2, lineHeightFactor: 1.12, maxLines: 2 },
+    },
   };
+
+  /**
+   * Bricht den Projektnamen in max. 2 Zeilen um; passt die Schriftgröße
+   * automatisch nach unten an, bis Name und Zeilen in die Karte passen.
+   * Misst mit einem Canvas-Kontext → Vorschau und PDF nutzen exakt dieselbe
+   * Aufteilung. Alle Maße in pt (Messung intern in px, 1pt = 96/72 px).
+   * @returns {{ size:number, lines:string[], lineHeight:number, firstBaseline:number }}
+   */
+  function layoutProjectName(ctx, name, cardSpec) {
+    const PT2PX = 96 / 72;
+    const maxWidthPx = (cardSpec.rect.w - 2 * cardSpec.pad) * PT2PX;
+    const n = cardSpec.name;
+
+    function wrap(sizePt) {
+      ctx.font = n.weight + ' ' + (sizePt * PT2PX) + 'px Inter, sans-serif';
+      const words = name.split(/\s+/).filter(Boolean);
+      const lines = [];
+      let cur = '';
+      for (const w of words) {
+        const probe = cur ? cur + ' ' + w : w;
+        if (ctx.measureText(probe).width <= maxWidthPx) {
+          cur = probe;
+        } else {
+          if (cur) lines.push(cur);
+          cur = w;
+          if (ctx.measureText(w).width > maxWidthPx) return null; // einzelnes Wort zu breit
+        }
+      }
+      if (cur) lines.push(cur);
+      return lines.length <= n.maxLines ? lines : null;
+    }
+
+    let size = n.baseSize;
+    let lines = null;
+    while (size >= n.minSize) {
+      lines = wrap(size);
+      if (lines) break;
+      size = Math.round((size - Math.max(0.5, size * 0.06)) * 10) / 10;
+    }
+    if (!lines) { // Notfall: hart kürzen bei Minimalgröße
+      size = n.minSize;
+      ctx.font = n.weight + ' ' + (size * PT2PX) + 'px Inter, sans-serif';
+      let s = name;
+      while (s.length > 1 && ctx.measureText(s + '…').width > maxWidthPx) s = s.slice(0, -1);
+      lines = [s + '…'];
+    }
+
+    const lineHeight = size * n.lineHeightFactor;
+    // 1 Zeile: Baseline exakt wie die Nachbarwerte; 2 Zeilen: darum zentriert
+    const firstBaseline = n.centerBaseline - ((lines.length - 1) * lineHeight) / 2;
+    return { size, lines, lineHeight, firstBaseline };
+  }
 
   /**
    * Rechtlicher Hinweis – gemeinsame Quelle für Dashboard, Vorschau UND PDF,
@@ -129,5 +199,5 @@
     pdf: { x: 27, firstBaseline: 570, lineHeight: 10.5, size: 7.5, color: 'rgba(255,255,255,0.65)' },
   };
 
-  global.MyntImpact = { computeImpact, fmtDE, computeDisplay, PDF_SPEC, DISCLAIMER };
+  global.MyntImpact = { computeImpact, literFromQm, fmtDE, computeDisplay, layoutProjectName, PDF_SPEC, DISCLAIMER };
 })(typeof window !== 'undefined' ? window : globalThis);

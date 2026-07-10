@@ -42,6 +42,7 @@
     // Schriften müssen vor dem Zeichnen auf Canvas geladen sein
     if (document.fonts && document.fonts.load) {
       await Promise.all([
+        document.fonts.load('400 32px Inter'),
         document.fonts.load('500 98px Inter'),
         document.fonts.load('600 32px Inter'),
       ]).catch(function () {});
@@ -86,6 +87,23 @@
           ctx.fillText(disp[f.key], f.x * fx, f.baseline * fy);
         });
 
+        // Optionale Projektname-Karte: ersetzt das Produktfoto durch eine
+        // Creme-Karte im Stil der Nachbarkarten (Name + Label "Projektname")
+        var pname = (opts.projectName || '').trim();
+        if (pname) {
+          var pc = spec.projectCard;
+          ctx.fillStyle = '#fbf6f2'; // Creme wie Nachbarkarten
+          ctx.fillRect(pc.rect.x * fx, pc.rect.y * fy, pc.rect.w * fx, pc.rect.h * fy);
+          var lay = MI.layoutProjectName(ctx, pname, pc);
+          ctx.fillStyle = '#2e384b'; // Navy wie Nachbarwerte
+          ctx.font = pc.name.weight + ' ' + (lay.size * fy) + 'px Inter, sans-serif';
+          lay.lines.forEach(function (line, li) {
+            ctx.fillText(line, (pc.rect.x + pc.pad) * fx, (lay.firstBaseline + li * lay.lineHeight) * fy);
+          });
+          ctx.font = pc.label.weight + ' ' + (pc.label.size * fy) + 'px Inter, sans-serif';
+          ctx.fillText(pc.label.text, (pc.rect.x + pc.pad) * fx, pc.label.baseline * fy);
+        }
+
         // Rechtlicher Hinweis (Wortlaut aus calc.js) – letzte Zeile endet mit
         // der E-Mail-Adresse, die unterstrichen und (unten) verlinkt wird.
         var D = MI.DISCLAIMER;
@@ -129,7 +147,7 @@
       }
     }
 
-    var literSafe = String(opts.liter).replace(/[^\d]/g, '') || 'X';
+    var literSafe = String(Math.round(parseFloat(opts.liter)) || 0) || 'X';
     doc.save(opts.filename || ('Mynt-Impact-Report-' + literSafe + 'L.pdf'));
   }
 

@@ -52,9 +52,38 @@
       <div class="bg-white rounded-2xl border border-[#DCD4C4] p-6 shadow-sm">
         <h2 class="font-serif text-xl font-semibold mb-5">Konfiguration</h2>
 
-        <label class="block text-sm font-medium mb-1.5" for="liter">Liter gestrichener Farbe</label>
-        <input id="liter" type="number" min="0" step="1" value="100"
-               class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
+        <span class="block text-sm font-medium mb-1.5">Was möchtest du eingeben?</span>
+        <div class="grid grid-cols-2 gap-2" id="mode-group">
+          <label class="cursor-pointer">
+            <input type="radio" name="mode" value="liter" checked class="peer sr-only">
+            <span class="block text-center rounded-lg border border-[#DCD4C4] bg-cream px-3 py-2.5 text-sm font-medium peer-checked:bg-mynt peer-checked:text-white peer-checked:border-mynt transition">Liter Farbe</span>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="mode" value="qm" class="peer sr-only">
+            <span class="block text-center rounded-lg border border-[#DCD4C4] bg-cream px-3 py-2.5 text-sm font-medium peer-checked:bg-mynt peer-checked:text-white peer-checked:border-mynt transition">Wandfläche (m²)</span>
+          </label>
+        </div>
+        <p class="mt-1.5 text-xs text-slatesoft">Das jeweils andere Feld wird automatisch berechnet.</p>
+
+        <div class="mt-5">
+          <div class="flex items-baseline justify-between mb-1.5">
+            <label class="text-sm font-medium" for="liter">Liter gestrichener Farbe</label>
+            <span id="liter-badge" class="hidden text-[11px] rounded-full bg-myntpale text-myntd px-2 py-0.5">wird automatisch berechnet</span>
+          </div>
+          <input id="liter" type="number" min="0" step="1" value="100"
+                 class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
+        </div>
+
+        <div class="mt-5">
+          <div class="flex items-baseline justify-between mb-1.5">
+            <label class="text-sm font-medium" for="qm">Wandfläche in m²</label>
+            <span id="qm-badge" class="text-[11px] rounded-full bg-myntpale text-myntd px-2 py-0.5">wird automatisch berechnet</span>
+            <button id="qm-reset" class="text-xs text-mynt hover:text-myntd underline underline-offset-2 hidden">auf Formelwert zurücksetzen</button>
+          </div>
+          <input id="qm" type="text" inputmode="decimal"
+                 class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
+          <p class="mt-1.5 text-xs text-slatesoft" id="qm-hint">Automatisch berechnet – kann manuell überschrieben werden.</p>
+        </div>
 
         <div class="mt-5">
           <span class="block text-sm font-medium mb-1.5">Anzahl Anstriche</span>
@@ -72,12 +101,12 @@
 
         <div class="mt-5">
           <div class="flex items-baseline justify-between mb-1.5">
-            <label class="text-sm font-medium" for="qm">Fläche in m²</label>
-            <button id="qm-reset" class="text-xs text-mynt hover:text-myntd underline underline-offset-2 hidden">auf Formelwert zurücksetzen</button>
+            <label class="text-sm font-medium" for="pname">Projektname</label>
+            <span class="text-xs text-slatesoft">optional · ersetzt das Produktfoto</span>
           </div>
-          <input id="qm" type="text" inputmode="decimal"
-                 class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
-          <p class="mt-1.5 text-xs text-slatesoft" id="qm-hint">Automatisch berechnet – kann manuell überschrieben werden.</p>
+          <input id="pname" type="text" maxlength="60" placeholder="z. B. Kita Sonnenschein"
+                 class="w-full rounded-lg border border-[#DCD4C4] bg-cream px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-mynt/50 focus:border-mynt">
+          <p class="mt-1.5 text-xs text-slatesoft">Erscheint auf Seite 2 anstelle des Produktfotos (max. 2 Zeilen, passt sich automatisch an).</p>
         </div>
 
         <div class="mt-5">
@@ -146,18 +175,21 @@
 <script src="pdf-client.js"></script>
 <script>
   (function () {
-    const { computeImpact, fmtDE } = window.MyntImpact;
+    const { computeImpact, literFromQm, fmtDE } = window.MyntImpact;
 
-    const $liter   = document.getElementById('liter');
-    const $qm      = document.getElementById('qm');
-    const $qmReset = document.getElementById('qm-reset');
-    const $qmHint  = document.getElementById('qm-hint');
-    const $preview = document.getElementById('preview');
-    const $pdfBtn  = document.getElementById('pdf-btn');
-    const $openRep = document.getElementById('open-report');
-    const $table   = document.getElementById('calc-table');
+    const $liter      = document.getElementById('liter');
+    const $literBadge = document.getElementById('liter-badge');
+    const $qm         = document.getElementById('qm');
+    const $qmBadge    = document.getElementById('qm-badge');
+    const $qmReset    = document.getElementById('qm-reset');
+    const $qmHint     = document.getElementById('qm-hint');
+    const $pname      = document.getElementById('pname');
+    const $preview    = document.getElementById('preview');
+    const $pdfBtn     = document.getElementById('pdf-btn');
+    const $openRep    = document.getElementById('open-report');
+    const $table      = document.getElementById('calc-table');
 
-    let qmDirty = false;   // wurde m² manuell überschrieben?
+    let qmDirty = false;   // wurde m² manuell überschrieben? (nur Liter-Modus)
     let debounceTimer = null;
     let logoDataUrl = '';  // Data-URL des gewählten Logos ('' = kein Logo)
     let logoVersion = 0;   // erzwingt Neuladen der Vorschau bei Logo-Änderung
@@ -167,12 +199,36 @@
       return checked ? checked.value : '2';
     }
 
+    function currentMode() {
+      const checked = document.querySelector('input[name="mode"]:checked');
+      return checked ? checked.value : 'liter';
+    }
+
+    /** Deutsche Zahleneingabe parsen: "1.125", "500,5", "450" → Number */
+    function parseNum(s) {
+      s = String(s || '').trim().replace(/\s/g, '');
+      if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '');
+      s = s.replace(',', '.');
+      const n = parseFloat(s);
+      return isFinite(n) && n >= 0 ? n : 0;
+    }
+
+    /** Maßgebliche Litermenge – je nach Modus eingegeben oder berechnet */
+    function currentLiter() {
+      return currentMode() === 'qm'
+        ? literFromQm(parseNum($qm.value), currentCoats())
+        : parseNum($liter.value);
+    }
+
     function reportParams() {
-      return new URLSearchParams({
-        liter: $liter.value || '0',
+      const p = new URLSearchParams({
+        liter: String(Math.round(currentLiter() * 10000) / 10000),
         coats: currentCoats(),
-        qm: qmDirty ? $qm.value.trim() : '',
-      }).toString();
+        qm: currentMode() === 'qm' ? $qm.value.trim() : (qmDirty ? $qm.value.trim() : ''),
+      });
+      const name = $pname.value.trim();
+      if (name) p.set('pname', name);
+      return p.toString();
     }
 
     function row(label, value, highlight) {
@@ -182,17 +238,43 @@
               </div>`;
     }
 
-    function update() {
-      const r = computeImpact($liter.value, currentCoats());
+    /** Aktiv-/Berechnet-Styling für die beiden Wertefelder */
+    function styleField(input, editable) {
+      input.readOnly = !editable;
+      input.classList.toggle('bg-cream', editable);
+      input.classList.toggle('bg-[#EFEBE2]', !editable);
+      input.classList.toggle('text-slatesoft', !editable);
+      input.classList.toggle('cursor-not-allowed', !editable);
+    }
 
-      // m²-Feld: nur automatisch füllen, solange nicht manuell überschrieben
-      if (!qmDirty) {
-        $qm.value = fmtDE(r.qmAuto);
-        $qmReset.classList.add('hidden');
-        $qmHint.textContent = 'Automatisch berechnet – kann manuell überschrieben werden.';
+    function update() {
+      const mode = currentMode();
+      const liter = currentLiter();
+      const r = computeImpact(liter, currentCoats());
+
+      if (mode === 'liter') {
+        // ---- Liter eingeben → Fläche wird berechnet (Override möglich) ----
+        styleField($liter, true);
+        styleField($qm, true); // Override bleibt erlaubt wie bisher
+        $literBadge.classList.add('hidden');
+        $qmBadge.classList.toggle('hidden', qmDirty);
+        if (!qmDirty) {
+          $qm.value = fmtDE(r.qmAuto);
+          $qmReset.classList.add('hidden');
+          $qmHint.textContent = 'Automatisch berechnet – kann manuell überschrieben werden.';
+        } else {
+          $qmReset.classList.remove('hidden');
+          $qmHint.textContent = 'Manuell überschrieben – Formelwert wäre ' + fmtDE(r.qmAuto) + ' m².';
+        }
       } else {
-        $qmReset.classList.remove('hidden');
-        $qmHint.textContent = 'Manuell überschrieben – Formelwert wäre ' + fmtDE(r.qmAuto) + ' m².';
+        // ---- Fläche eingeben → Liter wird berechnet ----
+        styleField($qm, true);
+        styleField($liter, false);
+        $qmBadge.classList.add('hidden');
+        $literBadge.classList.remove('hidden');
+        $qmReset.classList.add('hidden');
+        $qmHint.textContent = 'Aus der Wandfläche wird die benötigte Farbmenge berechnet.';
+        $liter.value = Math.round(liter * 10) / 10;
       }
 
       $table.innerHTML = [
@@ -222,8 +304,26 @@
     document.querySelectorAll('input[name="coats"]').forEach(el =>
       el.addEventListener('change', () => { update(); })
     );
-    $qm.addEventListener('input', () => { qmDirty = true; scheduleUpdate(); });
+    $qm.addEventListener('input', () => {
+      if (currentMode() === 'liter') qmDirty = true; // im Flächen-Modus ist m² das Eingabefeld
+      scheduleUpdate();
+    });
     $qmReset.addEventListener('click', (e) => { e.preventDefault(); qmDirty = false; update(); });
+    $pname.addEventListener('input', scheduleUpdate);
+
+    // Moduswechsel: aktives Feld vorbefüllen, damit die Werte konsistent bleiben
+    document.querySelectorAll('input[name="mode"]').forEach(el =>
+      el.addEventListener('change', () => {
+        if (currentMode() === 'qm') {
+          const r = computeImpact(parseNum($liter.value), currentCoats());
+          $qm.value = String(Math.round(r.qmAuto * 10) / 10).replace('.', ',');
+        } else {
+          $liter.value = Math.round(currentLiter() * 10) / 10 || '';
+        }
+        qmDirty = false;
+        update();
+      })
+    );
 
     // ---------- Eigenes Logo (optional) ----------
     const $logoFile   = document.getElementById('logo-file');
@@ -335,10 +435,12 @@
       $pdfBtn.classList.add('opacity-70');
       $pdfBtn.textContent = 'PDF wird erstellt…';
 
+      const rawLiter = String(Math.round(currentLiter() * 10000) / 10000);
+      const qmParam = currentMode() === 'qm' ? $qm.value.trim() : (qmDirty ? $qm.value.trim() : '');
       const payload = {
         email: em, consent: 1,
-        liter: $liter.value, coats: currentCoats(),
-        qm: qmDirty ? $qm.value.trim() : '', logo: !!logoDataUrl,
+        liter: rawLiter, coats: currentCoats(),
+        qm: qmParam, logo: !!logoDataUrl,
       };
 
       try {
@@ -353,9 +455,10 @@
 
         // PDF vollständig im Browser erzeugen und herunterladen
         await window.MyntPdf.generate({
-          liter: $liter.value || '0',
+          liter: rawLiter,
           coats: currentCoats(),
-          qm: qmDirty ? $qm.value.trim() : '',
+          qm: qmParam,
+          projectName: $pname.value.trim(),
           logoDataUrl,
         });
       } catch (err) {

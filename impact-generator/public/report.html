@@ -129,6 +129,29 @@
     color: rgba(255, 255, 255, 0.65);
   }
   .cert-note a { color: inherit; text-decoration: underline; }
+
+  /* Optionale Projektname-Karte: ersetzt das Produktfoto (3. Karte oben)
+     im Stil der Nachbarkarten; Maße/Baselines aus calc.js (PDF_SPEC) */
+  .project-card {
+    position: absolute;
+    left: 392.25pt;
+    top: 157.5pt;
+    width: 176.75pt;
+    height: 114pt;
+    background: #fbf6f2;
+    display: none;
+  }
+  .project-card .pc-name,
+  .project-card .pc-label {
+    position: absolute;
+    left: 12.3pt;
+    right: 12.3pt;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: #2e384b;
+    overflow: hidden;
+  }
+  .project-card .pc-name { font-weight: 500; }
+  .project-card .pc-label { font-weight: 400; font-size: 10.5pt; line-height: 1; }
 </style>
 </head>
 <body>
@@ -161,6 +184,12 @@
 
     <!-- Rechtlicher Hinweis (Wortlaut aus calc.js, per JS eingesetzt) -->
     <div class="cert-note" id="cert-note"></div>
+
+    <!-- Optionale Projektname-Karte (ersetzt das Produktfoto, ?pname=...) -->
+    <div class="project-card" id="project-card">
+      <div class="pc-name" id="pc-name"></div>
+      <div class="pc-label">Projektname</div>
+    </div>
 
     <div class="partner-logo"></div>
   </section>
@@ -218,6 +247,41 @@
         }
       });
     })();
+
+    // Optionale Projektname-Karte: ersetzt das Produktfoto. Umbruch/Schrift-
+    // größe kommen aus derselben Layout-Funktion wie im PDF (calc.js).
+    const pname = (params.get('pname') || '').trim();
+    if (pname) {
+      document.fonts.ready.then(() => {
+        const MI = window.MyntImpact;
+        const pc = MI.PDF_SPEC.projectCard;
+        const PT2PX = 96 / 72;
+        const ctx = document.createElement('canvas').getContext('2d');
+        const lay = MI.layoutProjectName(ctx, pname, pc);
+
+        // Baseline-genaue Platzierung (gleiche Metrik-Formel wie alignBaselines)
+        function topForBaseline(baselinePt, sizePt, lineHeightPt, weight) {
+          ctx.font = `${weight} ${sizePt * PT2PX}px Inter, sans-serif`;
+          const m = ctx.measureText('0');
+          const off = ((lineHeightPt * PT2PX - m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2 + m.fontBoundingBoxAscent) / PT2PX;
+          return (baselinePt - pc.rect.y) - off;
+        }
+
+        const nameEl = document.getElementById('pc-name');
+        nameEl.style.fontSize = lay.size + 'pt';
+        nameEl.style.lineHeight = lay.lineHeight + 'pt';
+        nameEl.style.top = topForBaseline(lay.firstBaseline, lay.size, lay.lineHeight, pc.name.weight) + 'pt';
+        lay.lines.forEach((l, i) => {
+          if (i) nameEl.appendChild(document.createElement('br'));
+          nameEl.appendChild(document.createTextNode(l));
+        });
+
+        document.querySelector('.project-card .pc-label').style.top =
+          topForBaseline(pc.label.baseline, pc.label.size, pc.label.size, pc.label.weight) + 'pt';
+
+        document.getElementById('project-card').style.display = 'block';
+      });
+    }
 
     // Optionales Kunden-Logo (als Data-URL in sessionStorage abgelegt) in die
     // Footer-Slots (Seiten 2-4) laden – rein clientseitig, kein Server nötig.
