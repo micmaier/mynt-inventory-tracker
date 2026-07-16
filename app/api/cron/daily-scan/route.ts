@@ -19,7 +19,15 @@ export async function GET(req: Request) {
   if (!process.env.CRON_SECRET) {
     return NextResponse.json({ ok: false, error: "CRON_SECRET missing" }, { status: 500 });
   }
-  if (secret !== process.env.CRON_SECRET) {
+
+  // Vercel Cron sendet CRON_SECRET als "Authorization: Bearer ..."-Header,
+  // manuelle Aufrufe nutzen weiterhin ?secret=...
+  const authHeader = req.headers.get("authorization");
+  const authorized =
+    secret === process.env.CRON_SECRET ||
+    authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!authorized) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
