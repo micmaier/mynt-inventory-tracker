@@ -128,6 +128,13 @@
       label: { text: 'Projektname', size: 10.5, weight: 400, baseline: 251.9 },
       name: { baseSize: 32.5, minSize: 11, weight: 500, centerBaseline: 209.2, lineHeightFactor: 1.12, maxLines: 2 },
     },
+    // Label-Korrektur: "Grundfläche" (Teil des Hintergrundbilds) wird mit der
+    // Kartenfarbe überdeckt und durch "Wandfläche" ersetzt – Position/Baseline
+    // pixelvermessen aus der Original-Grafik, gilt in Vorschau UND PDF.
+    labelFix: {
+      text: 'Wandfläche', x: 220.3, baseline: 249.7, size: 10.5, weight: 400,
+      color: CARD.navy, bg: CARD.cream, cover: { x: 218.5, y: 239.5, w: 62, h: 12.5 },
+    },
   };
 
   /**

@@ -152,6 +152,22 @@
   }
   .project-card .pc-name { font-weight: 500; }
   .project-card .pc-label { font-weight: 400; font-size: 10.5pt; line-height: 1; }
+
+  /* Label-Korrektur: überdeckt "Grundfläche" im Hintergrundbild und ersetzt es
+     durch "Wandfläche" (Baseline wie die anderen Overlays per alignBaselines) */
+  .label-fix {
+    position: absolute;
+    background: #fbf6f2;
+    color: #2e384b;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-weight: 400;
+    font-size: 10.5pt;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+  }
 </style>
 </head>
 <body>
@@ -175,6 +191,9 @@
     <div class="ov val-lg on-blue"  id="ov-ocean"  data-baseline="324.2" style="left: 408pt; top: 296pt; width: 134.5pt; height: 40pt;">10 kg</div>
     <div class="ov val-sm on-cream" id="ov-line46" data-baseline="428.4" style="left: 227pt; top: 418pt; width: 248pt; height: 14pt;">46 kg eingesparter Kunststoff entsprechen:</div>
     <div class="ov val-lg on-cream" id="ov-tueten" data-baseline="471.4" style="left: 226pt; top: 444pt; width: 124pt; height: 33pt;">2.300</div>
+
+    <!-- Label-Korrektur: "Grundfläche" → "Wandfläche" (überdeckt das Hintergrundbild) -->
+    <div class="label-fix" data-baseline="258" style="left: 220pt; top: 239.5pt; width: 62pt; height: 12.5pt;">Wandfläche</div>
 
     <!-- Baum-Metrik: nur Web-Vorschau -->
     <div class="tree-banner web-only">
@@ -303,10 +322,12 @@
     function alignBaselines() {
       const ctx = document.createElement('canvas').getContext('2d');
       const PT2PX = 96 / 72;
-      document.querySelectorAll('.ov[data-baseline]').forEach(el => {
+      document.querySelectorAll('.ov[data-baseline], .label-fix[data-baseline]').forEach(el => {
+        const isLabel = el.classList.contains('label-fix');
         const isLg = el.classList.contains('val-lg');
-        const Fpt = isLg ? 32.5 : 10.5;
-        ctx.font = `${isLg ? 500 : 600} ${Fpt * PT2PX}px Inter, sans-serif`;
+        const Fpt = isLabel ? 10.5 : (isLg ? 32.5 : 10.5);
+        const weight = isLabel ? 400 : (isLg ? 500 : 600);
+        ctx.font = `${weight} ${Fpt * PT2PX}px Inter, sans-serif`;
         const m = ctx.measureText('0');
         const baseFromBottomPx = (Fpt * PT2PX - m.fontBoundingBoxAscent + m.fontBoundingBoxDescent) / 2;
         const patchBottomPt = parseFloat(el.style.top) + parseFloat(el.style.height);

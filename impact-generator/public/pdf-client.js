@@ -87,6 +87,14 @@
           ctx.fillText(disp[f.key], f.x * fx, f.baseline * fy);
         });
 
+        // Label-Korrektur: "Grundfläche" überdecken und durch "Wandfläche" ersetzen
+        var lf = spec.labelFix;
+        ctx.fillStyle = lf.bg;
+        ctx.fillRect(lf.cover.x * fx, lf.cover.y * fy, lf.cover.w * fx, lf.cover.h * fy);
+        ctx.fillStyle = lf.color;
+        ctx.font = lf.weight + ' ' + (lf.size * fy) + 'px Inter, sans-serif';
+        ctx.fillText(lf.text, lf.x * fx, lf.baseline * fy);
+
         // Optionale Projektname-Karte: ersetzt das Produktfoto durch eine
         // Creme-Karte im Stil der Nachbarkarten (Name + Label "Projektname")
         var pname = (opts.projectName || '').trim();
